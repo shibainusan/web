@@ -26,10 +26,35 @@
                 <div class="panel-header">
                     <h2>File Loading</h2>
                 </div>
-                <div class="panel-body">
-                    <div class="file-input-wrapper">
+                <div class="panel-body" style="display: flex; gap: 20px; align-items: flex-start;">
+                    <div class="file-input-wrapper" style="flex: 1;">
                         <input type="file" id="fileInput" accept=".bin" class="file-input">
                         <label for="fileInput" class="file-label">Select file or drag &amp; drop</label>
+                    </div>
+                    <div style="display: flex; gap: 20px; min-width: 400px;">
+                        <div>
+                            <label for="iqFormatSelector" style="display: block; font-weight: 600; font-size: 0.9em; margin-bottom: 8px;">IQ Format:</label>
+                            <select id="iqFormatSelector">
+                                <option value="float">Float IQ (32-bit IEEE 754)</option>
+                                <option value="int16">16-bit Integer IQ</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label for="scaleSelector" style="display: block; font-weight: 600; font-size: 0.9em; margin-bottom: 8px;">IQ Scale:</label>
+                            <select id="scaleSelector">
+                                <option value="absolute">Absolute Voltage</option>
+                                <option value="adc16">16-bit ADC Code</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label for="samplingRateSelector" style="display: block; font-weight: 600; font-size: 0.9em; margin-bottom: 8px;">Sampling Rate:</label>
+                            <select id="samplingRateSelector">
+                                <option value="30.72">30.72 Msps</option>
+                                <option value="61.44">61.44 Msps</option>
+                                <option value="122.88" selected>122.88 Msps</option>
+                                <option value="245.76">245.76 Msps</option>
+                            </select>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -51,22 +76,6 @@
                     <div class="info-row">
                         <label>IQ Pairs:</label>
                         <span id="sampleCount">-</span>
-                    </div>
-                    <div class="info-row">
-                        <label>IQ Scale:</label>
-                        <select id="scaleSelector" disabled>
-                            <option value="absolute">Absolute Voltage</option>
-                            <option value="adc16">16-bit ADC Code</option>
-                        </select>
-                    </div>
-                    <div class="info-row">
-                        <label>Sampling Rate:</label>
-                        <select id="samplingRateSelector">
-                            <option value="30.72">30.72 Msps</option>
-                            <option value="61.44">61.44 Msps</option>
-                            <option value="122.88" selected>122.88 Msps</option>
-                            <option value="245.76">245.76 Msps</option>
-                        </select>
                     </div>
                     <div class="info-row">
                         <label>RMS:</label>
@@ -183,11 +192,16 @@
                 </div>
             </div>
 
-            <!-- Status Bar -->
-            <div class="status-bar">
-                <div id="status" class="status-text">Ready</div>
-                <div id="progress" class="progress-bar" style="display:none;">
-                    <div id="progressFill" class="progress-fill"></div>
+            <!-- Status Log -->
+            <div class="panel" style="margin-top: 20px;">
+                <div class="panel-header">
+                    <h2>Status Log</h2>
+                </div>
+                <div class="panel-body" style="padding: 0;">
+                    <textarea id="statusLog" readonly style="width: 100%; height: 120px; padding: 10px; border: none; border-radius: 0; font-family: 'Courier New', monospace; font-size: 0.85em; resize: none; background-color: var(--color-bg); color: var(--color-fg);"></textarea>
+                    <div id="progress" class="progress-bar" style="display:none; margin: 10px;">
+                        <div id="progressFill" class="progress-fill"></div>
+                    </div>
                 </div>
             </div>
         </div>

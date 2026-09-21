@@ -27,6 +27,7 @@ function msToSample(ms) {
 const elements = {
     fileInput: document.getElementById('fileInput'),
     fileLabel: document.querySelector('.file-label'),
+    iqFormatSelector: document.getElementById('iqFormatSelector'),
     fileName: document.getElementById('fileName'),
     fileSize: document.getElementById('fileSize'),
     sampleCount: document.getElementById('sampleCount'),
@@ -59,7 +60,7 @@ const elements = {
     canvas: document.getElementById('waveformCanvas'),
     fftCanvas: document.getElementById('fftCanvas'),
     spectrogramCanvas: document.getElementById('spectrogramCanvas'),
-    status: document.getElementById('status'),
+    statusLog: document.getElementById('statusLog'),
     progress: document.getElementById('progress'),
     progressFill: document.getElementById('progressFill')
 };
@@ -136,9 +137,11 @@ async function loadFile(file) {
         showProgress();
 
         const arrayBuffer = await file.arrayBuffer();
+        const iqFormat = elements.iqFormatSelector.value;
+        const scale = elements.scaleSelector.value;
 
         setStatus('Processing data...');
-        const metadata = await iqData.loadFromArrayBuffer(arrayBuffer, file.name);
+        const metadata = await iqData.loadFromArrayBuffer(arrayBuffer, file.name, iqFormat, scale);
 
         elements.startIndex.max = metadata.sampleCount - 1;
         elements.endIndex.max = metadata.sampleCount - 1;
@@ -180,8 +183,6 @@ function updateUI() {
         elements.bottomDb.textContent = '-';
         elements.startIndex.value = 0;
         elements.endIndex.value = 0;
-        elements.scaleSelector.disabled = true;
-        elements.scaleSelector.value = 'absolute';
         return;
     }
 
@@ -942,7 +943,18 @@ function handleAmplitudeUnitChange(event) {
 }
 
 function setStatus(message) {
-    elements.status.textContent = message;
+    const timestamp = new Date().toLocaleTimeString();
+    const logMessage = `[${timestamp}] ${message}`;
+
+    // Append message to log
+    if (elements.statusLog.value) {
+        elements.statusLog.value += '\n' + logMessage;
+    } else {
+        elements.statusLog.value = logMessage;
+    }
+
+    // Auto-scroll to bottom
+    elements.statusLog.scrollTop = elements.statusLog.scrollHeight;
 }
 
 function showProgress() {

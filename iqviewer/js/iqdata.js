@@ -13,34 +13,60 @@ class IQData {
         this.currentScale = 'absolute';
     }
 
-    async loadFromArrayBuffer(arrayBuffer, fileName, scale = 'absolute') {
+    async loadFromArrayBuffer(arrayBuffer, fileName, iqFormat = 'float', scale = 'absolute') {
         this.fileSize = arrayBuffer.byteLength;
         this.fileName = fileName;
         this.rawArrayBuffer = arrayBuffer;
         this.currentScale = scale;
+        this.iqFormat = iqFormat;
 
-        const float32View = new Float32Array(arrayBuffer);
-        this.sampleCount = Math.floor(float32View.length / 2);
+        this.iValues = new Float32Array(this.fileSize / (iqFormat === 'float' ? 8 : 4));
+        this.qValues = new Float32Array(this.iValues.length);
+        this.amplitudes = new Float32Array(this.iValues.length);
 
-        this.iValues = new Float32Array(this.sampleCount);
-        this.qValues = new Float32Array(this.sampleCount);
-        this.amplitudes = new Float32Array(this.sampleCount);
+        if (iqFormat === 'float') {
+            // Float IQ (32-bit IEEE 754 for each I and Q)
+            const float32View = new Float32Array(arrayBuffer);
+            this.sampleCount = Math.floor(float32View.length / 2);
 
-        for (let i = 0; i < this.sampleCount; i++) {
-            let iVal = float32View[i * 2];
-            let qVal = float32View[i * 2 + 1];
+            for (let i = 0; i < this.sampleCount; i++) {
+                let iVal = float32View[i * 2];
+                let qVal = float32View[i * 2 + 1];
 
-            if (scale === 'adc16') {
-                iVal = iVal / 32768;
-                qVal = qVal / 32768;
+                if (scale === 'adc16') {
+                    iVal = iVal / 32768;
+                    qVal = qVal / 32768;
+                }
+
+                this.iValues[i] = iVal;
+                this.qValues[i] = qVal;
+                this.amplitudes[i] = calculateAmplitude(iVal, qVal);
             }
 
-            this.iValues[i] = iVal;
-            this.qValues[i] = qVal;
-            this.amplitudes[i] = calculateAmplitude(iVal, qVal);
-        }
+            this.rawData = float32View;
+        } else if (iqFormat === 'int16') {
+            // 16-bit Integer IQ (signed int16 for each I and Q)
+            const int16View = new Int16Array(arrayBuffer);
+            this.sampleCount = Math.floor(int16View.length / 2);
 
-        this.rawData = float32View;
+            for (let i = 0; i < this.sampleCount; i++) {
+                let iVal = int16View[i * 2];
+                let qVal = int16View[i * 2 + 1];
+
+                if (scale === 'adc16') {
+                    // ADC16 scale: normalize by dividing by 32768
+                    iVal = iVal / 32768.0;
+                    qVal = qVal / 32768.0;
+                }
+                // If scale === 'absolute', keep raw int16 values as-is
+
+                this.iValues[i] = iVal;
+                this.qValues[i] = qVal;
+                this.amplitudes[i] = calculateAmplitude(iVal, qVal);
+            }
+
+            this.rawData = int16View;
+        }
 
         return {
             sampleCount: this.sampleCount,
@@ -55,7 +81,7 @@ class IQData {
         if (!this.rawArrayBuffer) {
             return null;
         }
-        return this.loadFromArrayBuffer(this.rawArrayBuffer, this.fileName, scale);
+        return this.loadFromArrayBuffer(this.rawArrayBuffer, this.fileName, this.iqFormat, scale);
     }
 
     getAmplitudeData(startIndex, endIndex) {
