@@ -1,0 +1,966 @@
+// Main Application Logic
+
+let iqData = new IQData();
+let renderer;
+let marker1Time = null;
+let marker1Amplitude = null;
+let marker2Time = null;
+let marker2Amplitude = null;
+let markerMode = null; // 'marker1' or 'marker2'
+
+function getSamplingRateMsps() {
+    return parseFloat(elements.samplingRateSelector.value);
+}
+
+function getSamplingRateSamplesPerMs() {
+    return getSamplingRateMsps() * 1e3;
+}
+
+function sampleToMs(sample) {
+    return sample / getSamplingRateSamplesPerMs();
+}
+
+function msToSample(ms) {
+    return Math.round(ms * getSamplingRateSamplesPerMs());
+}
+
+const elements = {
+    fileInput: document.getElementById('fileInput'),
+    fileLabel: document.querySelector('.file-label'),
+    fileName: document.getElementById('fileName'),
+    fileSize: document.getElementById('fileSize'),
+    sampleCount: document.getElementById('sampleCount'),
+    rms: document.getElementById('rms'),
+    averageDb: document.getElementById('averageDb'),
+    peakDb: document.getElementById('peakDb'),
+    bottomDb: document.getElementById('bottomDb'),
+    scaleSelector: document.getElementById('scaleSelector'),
+    samplingRateSelector: document.getElementById('samplingRateSelector'),
+    amplitudeUnit: document.getElementById('amplitudeUnit'),
+    startIndex: document.getElementById('startIndex'),
+    endIndex: document.getElementById('endIndex'),
+    startTime: document.getElementById('startTime'),
+    endTime: document.getElementById('endTime'),
+    startTimeSlider: document.getElementById('startTimeSlider'),
+    endTimeSlider: document.getElementById('endTimeSlider'),
+    startTimeValue: document.getElementById('startTimeValue'),
+    endTimeValue: document.getElementById('endTimeValue'),
+    zoomSlider: document.getElementById('zoomSlider'),
+    zoomValue: document.getElementById('zoomValue'),
+    prevButton: document.getElementById('prevButton'),
+    nextButton: document.getElementById('nextButton'),
+    resetButton: document.getElementById('resetButton'),
+    setMarker1Button: document.getElementById('setMarker1Button'),
+    setMarker2Button: document.getElementById('setMarker2Button'),
+    clearMarkersButton: document.getElementById('clearMarkersButton'),
+    marker1Value: document.getElementById('marker1Value'),
+    marker2Value: document.getElementById('marker2Value'),
+    burstLengthValue: document.getElementById('burstLengthValue'),
+    canvas: document.getElementById('waveformCanvas'),
+    fftCanvas: document.getElementById('fftCanvas'),
+    spectrogramCanvas: document.getElementById('spectrogramCanvas'),
+    status: document.getElementById('status'),
+    progress: document.getElementById('progress'),
+    progressFill: document.getElementById('progressFill')
+};
+
+function init() {
+    renderer = new WaveformRenderer(elements.canvas);
+
+    setupEventListeners();
+    updateUI();
+}
+
+function setupEventListeners() {
+    elements.fileInput.addEventListener('change', handleFileSelect);
+
+    elements.fileLabel.addEventListener('dragover', handleDragOver);
+    elements.fileLabel.addEventListener('dragleave', handleDragLeave);
+    elements.fileLabel.addEventListener('drop', handleFileDrop);
+
+    elements.scaleSelector.addEventListener('change', handleScaleChange);
+    elements.samplingRateSelector.addEventListener('change', handleSamplingRateChange);
+    elements.amplitudeUnit.addEventListener('change', handleAmplitudeUnitChange);
+    elements.startTime.addEventListener('change', debounce(handleTimeRangeChange, 300));
+    elements.endTime.addEventListener('change', debounce(handleTimeRangeChange, 300));
+    elements.startTimeSlider.addEventListener('input', handleStartTimeSliderChange);
+    elements.endTimeSlider.addEventListener('input', handleEndTimeSliderChange);
+    elements.zoomSlider.addEventListener('input', handleZoomChange);
+
+    elements.prevButton.addEventListener('click', handlePrevious);
+    elements.nextButton.addEventListener('click', handleNext);
+    elements.resetButton.addEventListener('click', handleReset);
+
+    elements.setMarker1Button.addEventListener('click', () => startMarkerMode('marker1'));
+    elements.setMarker2Button.addEventListener('click', () => startMarkerMode('marker2'));
+    elements.clearMarkersButton.addEventListener('click', clearMarkers);
+    elements.canvas.addEventListener('click', handleCanvasClick);
+
+    window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => {
+        renderer.isDarkMode = renderer.checkDarkMode();
+        renderer.setupColors();
+        updateWaveform();
+    });
+}
+
+function handleFileSelect(event) {
+    const file = event.target.files[0];
+    if (file) {
+        loadFile(file);
+    }
+}
+
+function handleDragOver(event) {
+    event.preventDefault();
+    elements.fileLabel.parentElement.classList.add('drag-over');
+}
+
+function handleDragLeave(event) {
+    event.preventDefault();
+    elements.fileLabel.parentElement.classList.remove('drag-over');
+}
+
+function handleFileDrop(event) {
+    event.preventDefault();
+    elements.fileLabel.parentElement.classList.remove('drag-over');
+
+    const files = event.dataTransfer.files;
+    if (files.length > 0) {
+        loadFile(files[0]);
+    }
+}
+
+async function loadFile(file) {
+    try {
+        setStatus('Loading file...');
+        showProgress();
+
+        const arrayBuffer = await file.arrayBuffer();
+
+        setStatus('Processing data...');
+        const metadata = await iqData.loadFromArrayBuffer(arrayBuffer, file.name);
+
+        elements.startIndex.max = metadata.sampleCount - 1;
+        elements.endIndex.max = metadata.sampleCount - 1;
+        elements.startIndex.value = 0;
+        elements.endIndex.value = metadata.sampleCount - 1;
+        elements.zoomSlider.value = 100;
+        elements.zoomValue.textContent = '100';
+
+        updateTimeRange();
+        updateTimeSliders();
+        elements.startTimeSlider.value = 0;
+        elements.endTimeSlider.value = sampleToMs(metadata.sampleCount - 1);
+        elements.startTimeValue.textContent = '0.000';
+        elements.endTimeValue.textContent = sampleToMs(metadata.sampleCount - 1).toFixed(3);
+
+        updateUI();
+        updateWaveform();
+
+        elements.scaleSelector.disabled = false;
+        setStatus(`File loaded: ${file.name}`);
+    } catch (error) {
+        setStatus(`Error: ${error.message}`);
+        console.error('File loading error:', error);
+    } finally {
+        hideProgress();
+    }
+}
+
+function updateUI() {
+    const metadata = iqData.getMetadata();
+
+    if (metadata.sampleCount === 0) {
+        elements.fileName.textContent = '-';
+        elements.fileSize.textContent = '-';
+        elements.sampleCount.textContent = '-';
+        elements.rms.textContent = '-';
+        elements.averageDb.textContent = '-';
+        elements.peakDb.textContent = '-';
+        elements.bottomDb.textContent = '-';
+        elements.startIndex.value = 0;
+        elements.endIndex.value = 0;
+        elements.scaleSelector.disabled = true;
+        elements.scaleSelector.value = 'absolute';
+        return;
+    }
+
+    elements.fileName.textContent = metadata.fileName || '-';
+    elements.fileSize.textContent = formatFileSize(metadata.fileSize);
+    elements.sampleCount.textContent = formatNumber(metadata.iqPairCount);
+
+    const powerStats = iqData.getPowerStatistics();
+    if (powerStats) {
+        elements.rms.textContent = powerStats.rms.toFixed(6);
+        elements.averageDb.textContent = isFinite(powerStats.averageDb) ? powerStats.averageDb.toFixed(2) + ' dB' : '-';
+        elements.peakDb.textContent = isFinite(powerStats.peakDb) ? powerStats.peakDb.toFixed(2) + ' dB' : '-';
+        elements.bottomDb.textContent = isFinite(powerStats.bottomDb) ? powerStats.bottomDb.toFixed(2) + ' dB' : '-';
+    } else {
+        elements.rms.textContent = '-';
+        elements.averageDb.textContent = '-';
+        elements.peakDb.textContent = '-';
+        elements.bottomDb.textContent = '-';
+    }
+}
+
+function updateWaveform() {
+    if (iqData.sampleCount === 0) {
+        renderer.clear();
+        return;
+    }
+
+    const startMs = parseFloat(elements.startTime.value) || 0;
+    const endMs = parseFloat(elements.endTime.value) || sampleToMs(iqData.sampleCount);
+
+    const startIndex = Math.max(0, msToSample(startMs));
+    const endIndex = Math.min(iqData.sampleCount, msToSample(endMs));
+
+    if (startIndex >= endIndex) {
+        setStatus('Invalid range');
+        return;
+    }
+
+    const amplitudeUnit = elements.amplitudeUnit.value;
+    const displayData = iqData.getAmplitudeDataDownsampled(startIndex, endIndex, elements.canvas.width, amplitudeUnit);
+
+    if (!displayData) {
+        renderer.clear();
+        setStatus('No data');
+        return;
+    }
+
+    let minValue, maxValue;
+    if (amplitudeUnit === 'db') {
+        // For dB, use Bottom dB and Peak dB
+        const ampStats = iqData.getPowerStatistics();
+        minValue = ampStats && isFinite(ampStats.bottomDb) ? ampStats.bottomDb : -100;
+        maxValue = ampStats ? ampStats.peakDb : 0;
+    } else {
+        // For RMS, use original statistics
+        const stats = iqData.getStatistics();
+        minValue = stats.min;
+        maxValue = stats.max;
+    }
+
+    const samplingRateMsps = getSamplingRateMsps();
+    const startTimeMs = parseFloat(elements.startTime.value) || 0;
+    const endTimeMs = parseFloat(elements.endTime.value) || sampleToMs(iqData.sampleCount);
+
+    renderer.render(
+        displayData.data,
+        minValue,
+        maxValue,
+        startIndex,
+        endIndex,
+        samplingRateMsps,
+        marker1Time,
+        marker2Time,
+        startTimeMs,
+        endTimeMs
+    );
+
+    setStatus(`Displaying: ${formatNumber(startIndex)} - ${formatNumber(endIndex - 1)} (${formatNumber(displayData.originalLength)} samples)`);
+}
+
+function handleZoomChange(event) {
+    const zoom = parseInt(event.target.value);
+    elements.zoomValue.textContent = zoom;
+
+    const currentStartMs = parseFloat(elements.startTime.value) || 0;
+    const currentEndMs = parseFloat(elements.endTime.value) || sampleToMs(iqData.sampleCount);
+    const centerMs = (currentStartMs + currentEndMs) / 2;
+
+    const totalTimeMs = sampleToMs(iqData.sampleCount);
+    const rangeSizeMs = totalTimeMs * 100 / zoom;
+    const newStartMs = Math.max(0, centerMs - rangeSizeMs / 2);
+    const newEndMs = Math.min(totalTimeMs, centerMs + rangeSizeMs / 2);
+
+    elements.startTime.value = newStartMs.toFixed(3);
+    elements.endTime.value = newEndMs.toFixed(3);
+    updateWaveform();
+}
+
+function handlePrevious() {
+    const startMs = parseFloat(elements.startTime.value) || 0;
+    const endMs = parseFloat(elements.endTime.value) || sampleToMs(iqData.sampleCount);
+    const rangeMs = endMs - startMs;
+    const stepMs = rangeMs / 2;
+
+    const newStartMs = Math.max(0, startMs - stepMs);
+    const newEndMs = Math.max(rangeMs, newStartMs + rangeMs);
+
+    elements.startTime.value = newStartMs.toFixed(3);
+    elements.endTime.value = Math.min(sampleToMs(iqData.sampleCount), newEndMs).toFixed(3);
+    updateWaveform();
+}
+
+function handleNext() {
+    const startMs = parseFloat(elements.startTime.value) || 0;
+    const endMs = parseFloat(elements.endTime.value) || sampleToMs(iqData.sampleCount);
+    const rangeMs = endMs - startMs;
+    const stepMs = rangeMs / 2;
+
+    const totalTimeMs = sampleToMs(iqData.sampleCount);
+    const newEndMs = Math.min(totalTimeMs, endMs + stepMs);
+    const newStartMs = Math.max(0, newEndMs - rangeMs);
+
+    elements.startTime.value = newStartMs.toFixed(3);
+    elements.endTime.value = newEndMs.toFixed(3);
+    updateWaveform();
+}
+
+function handleReset() {
+    elements.startIndex.value = 0;
+    elements.endIndex.value = iqData.sampleCount - 1;
+    elements.startTime.value = '0.000';
+    elements.endTime.value = sampleToMs(iqData.sampleCount - 1).toFixed(3);
+    elements.zoomSlider.value = 100;
+    elements.zoomValue.textContent = '100';
+    updateWaveform();
+}
+
+function startMarkerMode(mode) {
+    markerMode = markerMode === mode ? null : mode;
+    if (markerMode === 'marker1') {
+        elements.setMarker1Button.style.backgroundColor = '#0056b3';
+        elements.setMarker1Button.style.color = 'white';
+        elements.setMarker2Button.style.backgroundColor = 'transparent';
+        elements.setMarker2Button.style.color = '#007bff';
+        setStatus('Click on graph to set Marker 1');
+    } else if (markerMode === 'marker2') {
+        elements.setMarker2Button.style.backgroundColor = '#0056b3';
+        elements.setMarker2Button.style.color = 'white';
+        elements.setMarker1Button.style.backgroundColor = 'transparent';
+        elements.setMarker1Button.style.color = '#007bff';
+        setStatus('Click on graph to set Marker 2');
+    } else {
+        elements.setMarker1Button.style.backgroundColor = 'transparent';
+        elements.setMarker1Button.style.color = '#007bff';
+        elements.setMarker2Button.style.backgroundColor = 'transparent';
+        elements.setMarker2Button.style.color = '#007bff';
+        setStatus('Marker mode cancelled');
+    }
+}
+
+function handleCanvasClick(event) {
+    if (!markerMode) return;
+
+    const rect = elements.canvas.getBoundingClientRect();
+    const x = event.clientX - rect.left;
+    const startMs = parseFloat(elements.startTime.value) || 0;
+    const endMs = parseFloat(elements.endTime.value) || sampleToMs(iqData.sampleCount);
+
+    const padding = renderer.padding;
+    const graphWidth = renderer.graphWidth;
+
+    if (x < padding.left || x > (elements.canvas.width - padding.right)) {
+        return;
+    }
+
+    const relativeX = (x - padding.left) / graphWidth;
+    const timeMs = startMs + (endMs - startMs) * relativeX;
+    const sampleIndex = msToSample(timeMs);
+
+    // Get amplitude at this sample
+    let amplitude = null;
+    const amplitudeUnit = elements.amplitudeUnit.value;
+
+    if (sampleIndex >= 0 && sampleIndex < iqData.sampleCount) {
+        amplitude = iqData.amplitudes[Math.floor(sampleIndex)];
+
+        if (amplitudeUnit === 'db') {
+            amplitude = iqData.convertAmplitudeToDb(amplitude);
+        }
+    }
+
+    if (markerMode === 'marker1') {
+        marker1Time = timeMs;
+        marker1Amplitude = amplitude;
+        const ampStr = amplitude !== null ? ` (${amplitude.toFixed(2)})` : '';
+        elements.marker1Value.textContent = timeMs.toFixed(3) + ' ms' + ampStr;
+        updateBurstLength();
+        calculateFFT();
+        startMarkerMode(null);
+    } else if (markerMode === 'marker2') {
+        marker2Time = timeMs;
+        marker2Amplitude = amplitude;
+        const ampStr = amplitude !== null ? ` (${amplitude.toFixed(2)})` : '';
+        elements.marker2Value.textContent = timeMs.toFixed(3) + ' ms' + ampStr;
+        updateBurstLength();
+        startMarkerMode(null);
+    }
+
+    updateWaveform();
+}
+
+function updateBurstLength() {
+    if (marker1Time !== null && marker2Time !== null) {
+        const burstLength = Math.abs(marker2Time - marker1Time);
+        elements.burstLengthValue.textContent = burstLength.toFixed(3) + ' ms';
+        calculateSpectrogram();
+    }
+}
+
+function clearMarkers() {
+    marker1Time = null;
+    marker1Amplitude = null;
+    marker2Time = null;
+    marker2Amplitude = null;
+    markerMode = null;
+    elements.marker1Value.textContent = '-';
+    elements.marker2Value.textContent = '-';
+    elements.burstLengthValue.textContent = '-';
+    elements.setMarker1Button.style.backgroundColor = 'transparent';
+    elements.setMarker1Button.style.color = '#007bff';
+    elements.setMarker2Button.style.backgroundColor = 'transparent';
+    elements.setMarker2Button.style.color = '#007bff';
+    updateWaveform();
+}
+
+function calculateFFT() {
+    if (marker1Time === null || iqData.sampleCount === 0) {
+        clearFFT();
+        return;
+    }
+
+    const fftSize = 1024;
+    const startSample = msToSample(marker1Time);
+    const endSample = Math.min(startSample + fftSize, iqData.sampleCount);
+
+    if (endSample - startSample < fftSize) {
+        setStatus('Not enough samples for 1024-point FFT');
+        clearFFT();
+        return;
+    }
+
+    // Get complex IQ data for FFT with Hamming window
+    const fftInput = [];
+    for (let i = 0; i < fftSize; i++) {
+        const idx = startSample + i;
+        // Apply Hamming window
+        const window = 0.54 - 0.46 * Math.cos(2 * Math.PI * i / (fftSize - 1));
+        if (idx < iqData.sampleCount) {
+            fftInput.push(iqData.iValues[idx] * window);
+            fftInput.push(iqData.qValues[idx] * window);
+        }
+    }
+
+    // Calculate FFT using fft.js
+    const fft = new FFT(fftSize);
+    const output = fft.createComplexArray();
+    // Copy input to output array for FFT processing
+    for (let i = 0; i < fftInput.length; i++) {
+        output[i] = fftInput[i];
+    }
+    fft.transform(output, fftInput);
+
+    // Calculate magnitude spectrum (both positive and negative frequencies)
+    const magnitude = new Float32Array(fftSize);
+    const samplingRateMsps = getSamplingRateMsps();
+    const samplingRateHz = samplingRateMsps * 1e6;
+
+    // Normalization factor for window and FFT
+    let windowSum = 0;
+    for (let i = 0; i < fftSize; i++) {
+        const window = 0.54 - 0.46 * Math.cos(2 * Math.PI * i / (fftSize - 1));
+        windowSum += window;
+    }
+    const normalization = 2 / (fftSize * windowSum / fftSize);
+
+    // Calculate magnitudes for all frequencies
+    for (let i = 0; i < fftSize; i++) {
+        const real = output[2 * i];
+        const imag = output[2 * i + 1];
+        const mag = Math.sqrt(real * real + imag * imag) * normalization;
+        magnitude[i] = 20 * Math.log10(mag + 1e-10); // Convert to dB
+    }
+
+    // Create frequency array with negative frequencies (-fs/2 to fs/2)
+    const frequencies = new Float32Array(fftSize);
+    for (let i = 0; i < fftSize; i++) {
+        if (i < fftSize / 2) {
+            frequencies[i] = i * samplingRateHz / fftSize;
+        } else {
+            frequencies[i] = (i - fftSize) * samplingRateHz / fftSize;
+        }
+    }
+
+    // Get min/max values to match Waveform Display
+    const amplitudeUnit = elements.amplitudeUnit.value;
+    let minValue, maxValue;
+    if (amplitudeUnit === 'db') {
+        // For dB, use Bottom dB and Peak dB
+        const ampStats = iqData.getPowerStatistics();
+        minValue = ampStats && isFinite(ampStats.bottomDb) ? ampStats.bottomDb : -100;
+        maxValue = ampStats ? ampStats.peakDb : 0;
+    } else {
+        // For RMS, use original statistics
+        const stats = iqData.getStatistics();
+        minValue = stats.min;
+        maxValue = stats.max;
+    }
+
+    drawFFT(magnitude, frequencies, minValue, maxValue);
+}
+
+function drawFFT(magnitude, frequencies, minValue, maxValue) {
+    const ctx = elements.fftCanvas.getContext('2d');
+    const width = elements.fftCanvas.width;
+    const height = elements.fftCanvas.height;
+    const padding = 50;
+
+    // Check dark mode
+    const isDarkMode = window.matchMedia('(prefers-color-scheme: dark)').matches;
+    const bgColor = isDarkMode ? '#1e1e1e' : '#ffffff';
+    const fgColor = isDarkMode ? '#e0e0e0' : '#000000';
+    const waveColor = isDarkMode ? '#4fa3ff' : '#1f77b4';
+    const gridColor = isDarkMode ? '#505050' : '#d3d3d3';
+
+    // Clear canvas
+    ctx.fillStyle = bgColor;
+    ctx.fillRect(0, 0, width, height);
+
+    // Draw grid
+    ctx.strokeStyle = gridColor;
+    ctx.lineWidth = 0.5;
+    ctx.beginPath();
+    const gridSpacing = 50;
+    for (let x = padding; x < width - padding; x += gridSpacing) {
+        ctx.moveTo(x, padding);
+        ctx.lineTo(x, height - padding);
+    }
+    for (let y = padding; y < height - padding; y += gridSpacing) {
+        ctx.moveTo(padding, y);
+        ctx.lineTo(width - padding, y);
+    }
+    ctx.stroke();
+
+    // Draw axes
+    ctx.strokeStyle = fgColor;
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(padding, padding);
+    ctx.lineTo(padding, height - padding);
+    ctx.lineTo(width - padding, height - padding);
+    ctx.stroke();
+
+    // Use Waveform Display's min/max values
+    const minMag = minValue !== undefined ? minValue : -100;
+    const maxMag = maxValue !== undefined ? maxValue : 0;
+
+    // Draw magnitude spectrum (with fft shift for proper display)
+    ctx.strokeStyle = waveColor;
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+
+    const graphWidth = width - 2 * padding;
+    const graphHeight = height - 2 * padding;
+
+    // Rearrange FFT output for proper display (-fs/2 to fs/2)
+    const fftSize = magnitude.length;
+    for (let displayIdx = 0; displayIdx < fftSize; displayIdx++) {
+        // Map display index to FFT bin index
+        let fftIdx;
+        if (displayIdx < fftSize / 2) {
+            fftIdx = displayIdx + fftSize / 2;  // Positive frequencies
+        } else {
+            fftIdx = displayIdx - fftSize / 2;  // Negative frequencies
+        }
+
+        const x = padding + (displayIdx / fftSize) * graphWidth;
+        const normalized = (magnitude[fftIdx] - minMag) / (maxMag - minMag || 1);
+        const y = height - padding - normalized * graphHeight;
+
+        if (displayIdx === 0) {
+            ctx.moveTo(x, y);
+        } else {
+            ctx.lineTo(x, y);
+        }
+    }
+    ctx.stroke();
+
+    // Draw DC (0 Hz) line
+    ctx.strokeStyle = '#ff0000';
+    ctx.lineWidth = 1;
+    ctx.globalAlpha = 0.3;
+    ctx.beginPath();
+    const dcX = padding + (fftSize / 2 / fftSize) * graphWidth;
+    ctx.moveTo(dcX, padding);
+    ctx.lineTo(dcX, height - padding);
+    ctx.stroke();
+    ctx.globalAlpha = 1.0;
+
+    // Draw frequency axis labels
+    ctx.fillStyle = fgColor;
+    ctx.font = '11px Arial';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'top';
+
+    const samplingRateMsps = getSamplingRateMsps();
+    const samplingRateHz = samplingRateMsps * 1e6;
+    const maxFreq = samplingRateHz / 2;
+    const freqSteps = 5;
+    for (let i = 0; i <= freqSteps; i++) {
+        const freqNorm = i / freqSteps;
+        const freq = -maxFreq + freqNorm * (2 * maxFreq);
+        const freqMHz = freq / 1e6;
+        const x = padding + freqNorm * graphWidth;
+        ctx.fillText(freqMHz.toFixed(1) + ' MHz', x, height - padding + 10);
+    }
+
+    // Draw magnitude axis labels
+    ctx.textAlign = 'right';
+    ctx.textBaseline = 'middle';
+    const magSteps = 5;
+    for (let i = 0; i <= magSteps; i++) {
+        const mag = minMag + (maxMag - minMag) * (i / magSteps);
+        const y = height - padding - (i / magSteps) * graphHeight;
+        ctx.fillText(mag.toFixed(1) + ' dB', padding - 10, y);
+    }
+
+    // Draw labels
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'top';
+    ctx.fillText('Frequency (MHz)', width / 2, height - 15);
+    ctx.textAlign = 'right';
+    ctx.textBaseline = 'middle';
+    ctx.save();
+    ctx.translate(15, height / 2);
+    ctx.rotate(-Math.PI / 2);
+    ctx.fillText('Magnitude (dB)', 0, 0);
+    ctx.restore();
+}
+
+function clearFFT() {
+    const ctx = elements.fftCanvas.getContext('2d');
+    const width = elements.fftCanvas.width;
+    const height = elements.fftCanvas.height;
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(0, 0, width, height);
+}
+
+function calculateSpectrogram() {
+    if (marker1Time === null || marker2Time === null || iqData.sampleCount === 0) {
+        clearSpectrogram();
+        return;
+    }
+
+    const fftSize = 1024;
+    const hopSize = 1024; // 0% overlap
+    const startSample = msToSample(Math.min(marker1Time, marker2Time));
+    const endSample = msToSample(Math.max(marker1Time, marker2Time));
+    const duration = endSample - startSample;
+
+    if (duration < fftSize) {
+        setStatus('Range too short for spectrogram');
+        clearSpectrogram();
+        return;
+    }
+
+    // Calculate number of frames
+    const numFrames = Math.floor((duration - fftSize) / hopSize) + 1;
+    const samplingRateMsps = getSamplingRateMsps();
+    const samplingRateHz = samplingRateMsps * 1e6;
+
+    // Create spectrogram data (frames x frequency bins)
+    const spectrogram = new Array(numFrames);
+    for (let frame = 0; frame < numFrames; frame++) {
+        spectrogram[frame] = new Float32Array(fftSize);
+    }
+
+    // Normalization factor for window
+    let windowSum = 0;
+    for (let i = 0; i < fftSize; i++) {
+        const window = 0.54 - 0.46 * Math.cos(2 * Math.PI * i / (fftSize - 1));
+        windowSum += window;
+    }
+    const normalization = 2 / (fftSize * windowSum / fftSize);
+
+    // Calculate FFT for each frame
+    for (let frame = 0; frame < numFrames; frame++) {
+        const frameStartSample = startSample + frame * hopSize;
+        const fftInput = [];
+
+        // Get IQ data for this frame with Hamming window
+        for (let i = 0; i < fftSize; i++) {
+            const idx = frameStartSample + i;
+            const window = 0.54 - 0.46 * Math.cos(2 * Math.PI * i / (fftSize - 1));
+            if (idx < iqData.sampleCount) {
+                fftInput.push(iqData.iValues[idx] * window);
+                fftInput.push(iqData.qValues[idx] * window);
+            }
+        }
+
+        // Calculate FFT
+        const fft = new FFT(fftSize);
+        const output = fft.createComplexArray();
+        for (let i = 0; i < fftInput.length; i++) {
+            output[i] = fftInput[i];
+        }
+        fft.transform(output, fftInput);
+
+        // Calculate magnitudes for all frequency bins
+        for (let i = 0; i < fftSize; i++) {
+            const real = output[2 * i];
+            const imag = output[2 * i + 1];
+            const mag = Math.sqrt(real * real + imag * imag) * normalization;
+            spectrogram[frame][i] = 20 * Math.log10(mag + 1e-10); // Convert to dB
+        }
+    }
+
+    drawSpectrogram(spectrogram, samplingRateHz);
+}
+
+function drawSpectrogram(spectrogram, samplingRateHz) {
+    const ctx = elements.spectrogramCanvas.getContext('2d');
+    const width = elements.spectrogramCanvas.width;
+    const height = elements.spectrogramCanvas.height;
+    const padding = { left: 60, right: 20, top: 40, bottom: 50 };
+
+    // Check dark mode
+    const isDarkMode = window.matchMedia('(prefers-color-scheme: dark)').matches;
+    const bgColor = isDarkMode ? '#1e1e1e' : '#ffffff';
+    const fgColor = isDarkMode ? '#e0e0e0' : '#000000';
+
+    // Clear canvas
+    ctx.fillStyle = bgColor;
+    ctx.fillRect(0, 0, width, height);
+
+    const graphWidth = width - padding.left - padding.right;
+    const graphHeight = height - padding.top - padding.bottom;
+    const numFrames = spectrogram.length;
+    const fftSize = spectrogram[0].length;
+
+    // Find min/max magnitude across all frames
+    let minMag = 0, maxMag = -100;
+    for (let frame = 0; frame < numFrames; frame++) {
+        for (let bin = 0; bin < fftSize; bin++) {
+            minMag = Math.min(minMag, spectrogram[frame][bin]);
+            maxMag = Math.max(maxMag, spectrogram[frame][bin]);
+        }
+    }
+
+    // Draw spectrogram as heatmap
+    const imageData = ctx.createImageData(graphWidth, graphHeight);
+    const data = imageData.data;
+
+    // Initialize all pixels to white
+    for (let i = 0; i < data.length; i += 4) {
+        data[i] = 255;     // R
+        data[i + 1] = 255; // G
+        data[i + 2] = 255; // B
+        data[i + 3] = 255; // A
+    }
+
+    // For each pixel position, find and draw the appropriate value
+    for (let y = 0; y < graphHeight; y++) {
+        // Map y pixel to frame index
+        const frameIdx = Math.round((y / graphHeight) * (numFrames - 1));
+        const clampedFrameIdx = Math.max(0, Math.min(frameIdx, numFrames - 1));
+
+        for (let x = 0; x < graphWidth; x++) {
+            // Map x pixel to bin index
+            const binIdxNorm = x / graphWidth;
+            const displayBinIdx = Math.round(binIdxNorm * fftSize);
+
+            let binIdx;
+            if (displayBinIdx < fftSize / 2) {
+                binIdx = displayBinIdx - fftSize / 2;
+                if (binIdx < 0) binIdx += fftSize;
+            } else {
+                binIdx = displayBinIdx - fftSize / 2;
+            }
+
+            binIdx = Math.max(0, Math.min(binIdx, fftSize - 1));
+
+            const mag = spectrogram[clampedFrameIdx][binIdx];
+            const normalized = (mag - minMag) / (maxMag - minMag || 1);
+
+            // Colormap: black->blue->cyan->green->yellow->red
+            const hue = normalized * 270;
+            const [r, g, b] = hslToRgb((360 - hue) % 360, 100, 50 * normalized);
+
+            const pixelIdx = (y * graphWidth + x) * 4;
+            data[pixelIdx] = r;
+            data[pixelIdx + 1] = g;
+            data[pixelIdx + 2] = b;
+            data[pixelIdx + 3] = 255;
+        }
+    }
+
+    ctx.putImageData(imageData, padding.left, padding.top);
+
+    // Draw axes
+    ctx.strokeStyle = fgColor;
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(padding.left, padding.top);
+    ctx.lineTo(padding.left, height - padding.bottom);
+    ctx.lineTo(width - padding.right, height - padding.bottom);
+    ctx.stroke();
+
+    // Draw frequency axis labels
+    ctx.fillStyle = fgColor;
+    ctx.font = '11px Arial';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'top';
+
+    const maxFreq = samplingRateHz / 2;
+    const freqSteps = 5;
+    for (let i = 0; i <= freqSteps; i++) {
+        const freqNorm = i / freqSteps;
+        const freq = -maxFreq + freqNorm * (2 * maxFreq);
+        const freqMHz = freq / 1e6;
+        const x = padding.left + freqNorm * graphWidth;
+        ctx.fillText(freqMHz.toFixed(1) + ' MHz', x, height - padding.bottom + 10);
+    }
+
+    // Draw time axis labels
+    ctx.textAlign = 'right';
+    ctx.textBaseline = 'middle';
+    const hopSize = 512;
+    const samplingRateMsps = getSamplingRateMsps();
+    const samplingRateSamplesPerMs = samplingRateMsps * 1e3;
+    const timeSteps = 5;
+    for (let i = 0; i <= timeSteps; i++) {
+        const frameIdx = Math.floor(i * (numFrames - 1) / timeSteps);
+        const sampleOffset = frameIdx * hopSize;
+        const timeMs = sampleOffset / samplingRateSamplesPerMs;
+        const y = padding.top + (i / timeSteps) * graphHeight;
+        ctx.fillText(timeMs.toFixed(3) + ' ms', padding.left - 10, y);
+    }
+
+    // Draw labels
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'top';
+    ctx.fillText('Frequency (MHz)', width / 2, height - 15);
+    ctx.textAlign = 'right';
+    ctx.textBaseline = 'middle';
+    ctx.save();
+    ctx.translate(15, height / 2);
+    ctx.rotate(-Math.PI / 2);
+    ctx.fillText('Time (ms)', 0, 0);
+    ctx.restore();
+}
+
+function clearSpectrogram() {
+    const ctx = elements.spectrogramCanvas.getContext('2d');
+    const width = elements.spectrogramCanvas.width;
+    const height = elements.spectrogramCanvas.height;
+    const isDarkMode = window.matchMedia('(prefers-color-scheme: dark)').matches;
+    const bgColor = isDarkMode ? '#1e1e1e' : '#ffffff';
+    ctx.fillStyle = bgColor;
+    ctx.fillRect(0, 0, width, height);
+}
+
+// HSL to RGB conversion utility
+function hslToRgb(h, s, l) {
+    s /= 100;
+    l /= 100;
+    const a = s * Math.min(l, 1 - l);
+    const f = n => {
+        const k = (n + h / 30) % 12;
+        return l - a * Math.max(-1, Math.min(k - 3, 9 - k, 1));
+    };
+    return [
+        Math.round(f(0) * 255),
+        Math.round(f(8) * 255),
+        Math.round(f(4) * 255)
+    ];
+}
+
+function handleScaleChange(event) {
+    if (iqData.sampleCount === 0) {
+        return;
+    }
+
+    const newScale = event.target.value;
+    setStatus('Reprocessing data with new scale...');
+    showProgress();
+
+    setTimeout(() => {
+        iqData.reprocessWithScale(newScale);
+        updateUI();
+        updateWaveform();
+        setStatus(`Scale changed to: ${newScale}`);
+        hideProgress();
+    }, 0);
+}
+
+function handleSamplingRateChange(event) {
+    const newRate = event.target.value;
+    updateTimeRange();
+    updateTimeSliders();
+    setStatus(`Sampling rate changed to: ${newRate} Msps`);
+}
+
+function handleStartTimeSliderChange(event) {
+    const startMs = parseFloat(event.target.value);
+    elements.startTime.value = startMs;
+    elements.startTimeValue.textContent = startMs.toFixed(3);
+    updateWaveform();
+}
+
+function handleEndTimeSliderChange(event) {
+    const endMs = parseFloat(event.target.value);
+    elements.endTime.value = endMs;
+    elements.endTimeValue.textContent = endMs.toFixed(3);
+    updateWaveform();
+}
+
+function updateTimeSliders() {
+    const totalTimeMs = sampleToMs(iqData.sampleCount - 1);
+    elements.startTimeSlider.max = totalTimeMs;
+    elements.endTimeSlider.max = totalTimeMs;
+}
+
+function handleTimeRangeChange() {
+    const startMs = parseFloat(elements.startTime.value) || 0;
+    const endMs = parseFloat(elements.endTime.value) || 0;
+
+    elements.startIndex.value = msToSample(startMs);
+    elements.endIndex.value = msToSample(endMs);
+    updateWaveform();
+}
+
+function updateTimeRange() {
+    const startSample = parseInt(elements.startIndex.value) || 0;
+    const endSample = parseInt(elements.endIndex.value) || iqData.sampleCount;
+
+    elements.startTime.value = sampleToMs(startSample).toFixed(3);
+    elements.endTime.value = sampleToMs(endSample).toFixed(3);
+}
+
+function handleAmplitudeUnitChange(event) {
+    if (iqData.sampleCount === 0) {
+        return;
+    }
+
+    const newUnit = event.target.value;
+    updateWaveform();
+    setStatus(`Amplitude unit changed to: ${newUnit}`);
+}
+
+function setStatus(message) {
+    elements.status.textContent = message;
+}
+
+function showProgress() {
+    elements.progress.style.display = 'flex';
+    elements.progressFill.style.width = '50%';
+}
+
+function hideProgress() {
+    elements.progress.style.display = 'none';
+    elements.progressFill.style.width = '0%';
+}
+
+function debounce(func, delay) {
+    let timeoutId;
+    return function(...args) {
+        clearTimeout(timeoutId);
+        timeoutId = setTimeout(() => func(...args), delay);
+    };
+}
+
+document.addEventListener('DOMContentLoaded', init);

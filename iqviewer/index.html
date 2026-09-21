@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="lang" content="en">
+    <title>IQ Data Viewer</title>
+    <link rel="stylesheet" href="css/style.css?v=2">
+    <style>
+        .info-panel .panel-body {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px 20px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>IQ Data Viewer</h1>
+        </header>
+
+        <div class="content">
+            <!-- File Selection Panel -->
+            <div class="panel file-panel">
+                <div class="panel-header">
+                    <h2>File Loading</h2>
+                </div>
+                <div class="panel-body">
+                    <div class="file-input-wrapper">
+                        <input type="file" id="fileInput" accept=".bin" class="file-input">
+                        <label for="fileInput" class="file-label">Select file or drag &amp; drop</label>
+                    </div>
+                </div>
+            </div>
+
+            <!-- File Info Panel -->
+            <div class="panel info-panel">
+                <div class="panel-header">
+                    <h2>File Information</h2>
+                </div>
+                <div class="panel-body">
+                    <div class="info-row">
+                        <label>File Name:</label>
+                        <span id="fileName">-</span>
+                    </div>
+                    <div class="info-row">
+                        <label>File Size:</label>
+                        <span id="fileSize">-</span>
+                    </div>
+                    <div class="info-row">
+                        <label>IQ Pairs:</label>
+                        <span id="sampleCount">-</span>
+                    </div>
+                    <div class="info-row">
+                        <label>IQ Scale:</label>
+                        <select id="scaleSelector" disabled>
+                            <option value="absolute">Absolute Voltage</option>
+                            <option value="adc16">16-bit ADC Code</option>
+                        </select>
+                    </div>
+                    <div class="info-row">
+                        <label>Sampling Rate:</label>
+                        <select id="samplingRateSelector">
+                            <option value="30.72">30.72 Msps</option>
+                            <option value="61.44">61.44 Msps</option>
+                            <option value="122.88" selected>122.88 Msps</option>
+                            <option value="245.76">245.76 Msps</option>
+                        </select>
+                    </div>
+                    <div class="info-row">
+                        <label>RMS:</label>
+                        <span id="rms">-</span>
+                    </div>
+                    <div class="info-row">
+                        <label>Average dB:</label>
+                        <span id="averageDb">-</span>
+                    </div>
+                    <div class="info-row">
+                        <label>Peak dB:</label>
+                        <span id="peakDb">-</span>
+                    </div>
+                    <div class="info-row">
+                        <label>Bottom dB:</label>
+                        <span id="bottomDb">-</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Display Settings Panel -->
+            <div class="panel settings-panel">
+                <div class="panel-header">
+                    <h2>Display Settings</h2>
+                </div>
+                <div class="panel-body">
+                    <div class="settings-group">
+                        <label>Display Range (Time: ms)</label>
+                        <div class="range-sliders">
+                            <div class="slider-group">
+                                <label for="startTimeSlider">Start (ms):</label>
+                                <input type="range" id="startTimeSlider" min="0" max="100" value="0" step="0.1" class="slider">
+                                <span id="startTimeValue">0.000</span>
+                            </div>
+                            <div class="slider-group">
+                                <label for="endTimeSlider">End (ms):</label>
+                                <input type="range" id="endTimeSlider" min="0" max="100" value="100" step="0.1" class="slider">
+                                <span id="endTimeValue">81.380</span>
+                            </div>
+                        </div>
+                        <div style="display:none;">
+                            <input type="number" id="startTime" min="0" value="0" step="0.001">
+                            <input type="number" id="endTime" min="0" value="81.38" step="0.001">
+                            <input type="number" id="startIndex" min="0" value="0">
+                            <input type="number" id="endIndex" min="0" value="10000">
+                        </div>
+                    </div>
+
+                    <div class="settings-row">
+                        <div class="settings-group">
+                            <label for="amplitudeUnit">Amplitude Unit:</label>
+                            <select id="amplitudeUnit">
+                                <option value="db">dB (default)</option>
+                                <option value="rms">RMS</option>
+                            </select>
+                        </div>
+
+                        <div class="settings-group">
+                            <label for="zoomSlider">Zoom: <span id="zoomValue">100</span>%</label>
+                            <input type="range" id="zoomSlider" min="100" max="2000" value="100" class="slider">
+                        </div>
+                    </div>
+
+                    <div class="button-group">
+                        <button id="prevButton" class="btn btn-secondary">← Previous</button>
+                        <button id="nextButton" class="btn btn-secondary">Next →</button>
+                        <button id="resetButton" class="btn btn-secondary">Reset</button>
+                    </div>
+
+                    <div class="settings-group">
+                        <label>Burst Measurement</label>
+                        <div class="marker-controls">
+                            <button id="setMarker1Button" class="btn btn-secondary">Set Marker 1</button>
+                            <span id="marker1Value">-</span>
+                            <button id="setMarker2Button" class="btn btn-secondary">Set Marker 2</button>
+                            <span id="marker2Value">-</span>
+                            <button id="clearMarkersButton" class="btn btn-secondary">Clear</button>
+                        </div>
+                        <div class="marker-result">
+                            <label>Burst Length (ms):</label>
+                            <span id="burstLengthValue">-</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Canvas Display Area -->
+            <div class="panel canvas-panel">
+                <div class="panel-header">
+                    <h2>Waveform Display</h2>
+                </div>
+                <div class="panel-body canvas-body">
+                    <canvas id="waveformCanvas" width="1200" height="400"></canvas>
+                </div>
+            </div>
+
+            <!-- FFT Display Area -->
+            <div class="panel canvas-panel">
+                <div class="panel-header">
+                    <h2>FFT Result (1024-point from Marker1)</h2>
+                </div>
+                <div class="panel-body canvas-body">
+                    <canvas id="fftCanvas" width="1200" height="400"></canvas>
+                </div>
+            </div>
+
+            <!-- Spectrogram Display Area -->
+            <div class="panel canvas-panel">
+                <div class="panel-header">
+                    <h2>Spectrogram (Marker1-2 Range)</h2>
+                </div>
+                <div class="panel-body canvas-body">
+                    <canvas id="spectrogramCanvas" width="1200" height="300"></canvas>
+                </div>
+            </div>
+
+            <!-- Status Bar -->
+            <div class="status-bar">
+                <div id="status" class="status-text">Ready</div>
+                <div id="progress" class="progress-bar" style="display:none;">
+                    <div id="progressFill" class="progress-fill"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="js/fft.js"></script>
+    <script src="js/utils.js"></script>
+    <script src="js/iqdata.js"></script>
+    <script src="js/renderer.js"></script>
+    <script src="js/app.js"></script>
+</body>
+</html>

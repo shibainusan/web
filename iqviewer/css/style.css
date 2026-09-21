@@ -1,0 +1,457 @@
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+:root {
+    --color-bg: #ffffff;
+    --color-fg: #000000;
+    --color-border: #e0e0e0;
+    --color-panel-bg: #f9f9f9;
+    --color-panel-border: #e0e0e0;
+    --color-btn-bg: #007bff;
+    --color-btn-fg: #ffffff;
+    --color-btn-hover: #0056b3;
+    --color-wave: #1f77b4;
+    --color-grid: #d3d3d3;
+    --color-status-ok: #28a745;
+    --color-status-error: #dc3545;
+}
+
+@media (prefers-color-scheme: dark) {
+    :root {
+        --color-bg: #1e1e1e;
+        --color-fg: #e0e0e0;
+        --color-border: #404040;
+        --color-panel-bg: #2d2d2d;
+        --color-panel-border: #404040;
+        --color-btn-bg: #0056b3;
+        --color-btn-fg: #e0e0e0;
+        --color-btn-hover: #0080ff;
+        --color-wave: #4fa3ff;
+        --color-grid: #505050;
+    }
+}
+
+body {
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    background-color: var(--color-bg);
+    color: var(--color-fg);
+    line-height: 1.5;
+}
+
+.container {
+    width: 100%;
+    max-width: 1400px;
+    margin: 0 auto;
+    padding: 20px;
+}
+
+header {
+    margin-bottom: 30px;
+    border-bottom: 2px solid var(--color-border);
+    padding-bottom: 15px;
+}
+
+header h1 {
+    font-size: 2em;
+    font-weight: 600;
+}
+
+.content {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+}
+
+/* Panel Styles */
+.panel {
+    border: 1px solid var(--color-panel-border);
+    border-radius: 8px;
+    background-color: var(--color-panel-bg);
+    overflow: hidden;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.panel-header {
+    padding: 15px 20px;
+    border-bottom: 1px solid var(--color-panel-border);
+    background-color: rgba(0, 0, 0, 0.02);
+}
+
+.panel-header h2 {
+    font-size: 1.1em;
+    font-weight: 600;
+}
+
+.panel-body {
+    padding: 20px;
+}
+
+/* File Panel */
+.file-panel .panel-body {
+    padding: 20px 20px;
+    text-align: center;
+}
+
+.file-input-wrapper {
+    position: relative;
+    display: inline-block;
+    width: 100%;
+    max-width: 400px;
+}
+
+.file-input {
+    display: none;
+}
+
+.file-label {
+    display: block;
+    padding: 10px 20px;
+    border: 2px dashed var(--color-border);
+    border-radius: 8px;
+    background-color: rgba(127, 127, 127, 0.05);
+    cursor: pointer;
+    transition: all 0.3s ease;
+    font-size: 0.95em;
+}
+
+.file-label:hover {
+    border-color: var(--color-btn-bg);
+    background-color: rgba(0, 123, 255, 0.05);
+}
+
+.file-input-wrapper.drag-over .file-label {
+    border-color: var(--color-btn-bg);
+    background-color: rgba(0, 123, 255, 0.1);
+}
+
+/* Info Panel */
+.info-panel .panel-body {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 15px 20px;
+}
+
+.info-row {
+    display: flex;
+    flex-direction: row;
+    gap: 10px;
+    padding: 0;
+    border-bottom: none;
+    align-items: center;
+}
+
+.info-row label {
+    font-weight: 600;
+    color: var(--color-fg);
+    font-size: 0.9em;
+}
+
+.info-row span {
+    font-family: 'Courier New', monospace;
+    color: var(--color-fg);
+    font-size: 0.95em;
+}
+
+/* Settings Panel */
+.settings-row {
+    display: flex;
+    gap: 30px;
+    margin-bottom: 25px;
+}
+
+.settings-row .settings-group {
+    flex: 1;
+    margin-bottom: 0;
+}
+
+.settings-group {
+    margin-bottom: 25px;
+}
+
+.settings-group {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+}
+
+.settings-group label {
+    font-weight: 600;
+    font-size: 0.9em;
+}
+
+.settings-row .settings-group {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    gap: 8px;
+}
+
+.settings-row .settings-group label {
+    white-space: nowrap;
+    margin-bottom: 0;
+}
+
+.settings-row .settings-group select,
+.settings-row .settings-group input[type="range"] {
+    flex: 1;
+}
+
+.range-inputs {
+    display: flex;
+    gap: 15px;
+    flex-wrap: wrap;
+}
+
+.range-sliders {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+}
+
+.slider-group {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.slider-group label {
+    font-size: 0.9em;
+    min-width: 100px;
+}
+
+.slider-group .slider {
+    flex: 1;
+    min-width: 200px;
+}
+
+.slider-group span {
+    font-family: 'Courier New', monospace;
+    font-size: 0.9em;
+    min-width: 70px;
+    text-align: right;
+}
+
+.input-group {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    gap: 8px;
+    flex: 1;
+    min-width: 150px;
+}
+
+.input-group label {
+    font-size: 0.9em;
+    margin-bottom: 0;
+    white-space: nowrap;
+}
+
+.input-group input[type="number"] {
+    padding: 8px 10px;
+    border: 1px solid var(--color-border);
+    border-radius: 4px;
+    background-color: var(--color-bg);
+    color: var(--color-fg);
+    font-family: 'Courier New', monospace;
+}
+
+.input-group input[type="number"]:focus {
+    outline: none;
+    border-color: var(--color-btn-bg);
+    box-shadow: 0 0 0 3px rgba(0, 123, 255, 0.1);
+}
+
+.slider {
+    width: 100%;
+    height: 6px;
+    border-radius: 3px;
+    background: var(--color-border);
+    outline: none;
+    -webkit-appearance: none;
+}
+
+.slider::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    background: var(--color-btn-bg);
+    cursor: pointer;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+}
+
+.slider::-moz-range-thumb {
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    background: var(--color-btn-bg);
+    cursor: pointer;
+    border: none;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+}
+
+.button-group {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+}
+
+.marker-controls {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+    flex-wrap: wrap;
+    margin-bottom: 10px;
+}
+
+.marker-controls span {
+    font-family: 'Courier New', monospace;
+    font-size: 0.9em;
+    padding: 5px 10px;
+    background-color: rgba(0, 0, 0, 0.05);
+    border-radius: 4px;
+}
+
+.marker-result {
+    display: flex;
+    gap: 15px;
+    align-items: center;
+}
+
+.marker-result label {
+    font-weight: 600;
+    font-size: 0.9em;
+}
+
+.marker-result span {
+    font-family: 'Courier New', monospace;
+    font-size: 0.95em;
+    font-weight: 600;
+    color: #dc3545;
+}
+
+/* Button Styles */
+.btn {
+    padding: 10px 20px;
+    border: none;
+    border-radius: 4px;
+    font-size: 0.95em;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.btn-primary {
+    background-color: var(--color-btn-bg);
+    color: var(--color-btn-fg);
+}
+
+.btn-primary:hover {
+    background-color: var(--color-btn-hover);
+}
+
+.btn-primary:active {
+    transform: scale(0.98);
+}
+
+.btn-secondary {
+    background-color: transparent;
+    color: var(--color-btn-bg);
+    border: 1px solid var(--color-btn-bg);
+}
+
+.btn-secondary:hover {
+    background-color: rgba(0, 123, 255, 0.1);
+}
+
+.btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+/* Canvas Panel */
+.canvas-panel {
+    margin-top: 20px;
+}
+
+.canvas-body {
+    padding: 0;
+    display: flex;
+    justify-content: center;
+    background-color: var(--color-bg);
+}
+
+canvas {
+    display: block;
+    border: 1px solid var(--color-panel-border);
+    background-color: var(--color-bg);
+    max-width: 100%;
+    height: auto;
+}
+
+/* Status Bar */
+.status-bar {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+    padding: 12px 20px;
+    background-color: var(--color-panel-bg);
+    border: 1px solid var(--color-panel-border);
+    border-radius: 4px;
+    font-size: 0.9em;
+}
+
+.status-text {
+    flex: 1;
+}
+
+.progress-bar {
+    width: 200px;
+    height: 20px;
+    background-color: var(--color-border);
+    border-radius: 10px;
+    overflow: hidden;
+}
+
+.progress-fill {
+    height: 100%;
+    background: linear-gradient(90deg, var(--color-btn-bg), var(--color-btn-hover));
+    width: 0%;
+    transition: width 0.2s ease;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+    .container {
+        padding: 15px;
+    }
+
+    header h1 {
+        font-size: 1.5em;
+    }
+
+    canvas {
+        width: 100%;
+        height: auto;
+    }
+
+    .range-inputs {
+        flex-direction: column;
+    }
+
+    .input-group {
+        min-width: 100%;
+    }
+
+    .button-group {
+        flex-direction: column;
+    }
+
+    .btn {
+        width: 100%;
+    }
+}
