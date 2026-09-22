@@ -29,7 +29,7 @@ function generateVectorCWArrayBuffer(frequencyMHz = 15, durationMs = 1000, sampl
 function generateChirp(startFreqMHz = 0, sweepVelocityMHzPerMs = 0.05, durationMs = 1000, samplingRateMsps = 122.88) {
     const samplingRateHz = samplingRateMsps * 1e6;
     const startFreqHz = startFreqMHz * 1e6;
-    const sweepVelocityHz = sweepVelocityMHzPerMs * 1e6; // Hz/ms
+    const sweepVelocityHzPerSec = sweepVelocityMHzPerMs * 1e9; // Convert MHz/ms to Hz/s
     const numSamples = Math.floor((durationMs / 1000) * samplingRateHz);
 
     // Create Float32Array for I and Q interleaved (I, Q, I, Q, ...)
@@ -37,11 +37,10 @@ function generateChirp(startFreqMHz = 0, sweepVelocityMHzPerMs = 0.05, durationM
 
     for (let n = 0; n < numSamples; n++) {
         const t = n / samplingRateHz; // time in seconds
-        const tMs = t * 1000; // time in milliseconds
 
         // Chirp: frequency increases linearly with time
         // f(t) = f0 + velocity * t
-        const phase = 2 * Math.PI * (startFreqHz * t + (sweepVelocityHz / 2) * t * t);
+        const phase = 2 * Math.PI * (startFreqHz * t + (sweepVelocityHzPerSec / 2) * t * t);
 
         // I = cos(phase), Q = sin(phase)
         iqData[n * 2] = Math.cos(phase);
