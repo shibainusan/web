@@ -4,7 +4,12 @@
 
 ## LibreSDRとそのパチモノHamGeek AD9363
 
-[使い方メモ](LibreSDR/LibreSDR.html)
+- [使い方メモ](LibreSDR/LibreSDR.html)
+
+- [IQ Dataを見るツール](iqviewer/index.html)
+  - これはClaudeさんに作らせた。FFTはローカルPCのJavaScriptでやっているので、100MBとか巨大なIQデータを食わせるとブラウザ固まる。
+  - IQデータをどこかのサーバに飛ばすとかはないので安心安全。会社の掟や座敷牢にいる方など、絶対オフラインじゃないとイヤな場合はGitHubから一式落とせば完全オフライン実行できるよ。 https://github.com/shibainusan/web/tree/main/iqviewer
+
 
 ## サーバー引っ越し
 
