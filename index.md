@@ -4,7 +4,7 @@
 
 ## LibreSDRとそのパチモノHamGeek AD9363
 
-
+[使い方メモ](LibreSDR/LibreSDR.html)
 
 ## サーバー引っ越し
 
