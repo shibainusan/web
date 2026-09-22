@@ -188,14 +188,7 @@ class IQData {
         const averageDb = rms > 0 ? Math.log10(rms) * 20 : -Infinity;
         const peakDb = maxPower > 0 ? Math.log10(Math.sqrt(maxPower)) * 20 : -Infinity;
 
-        let bottomDb;
-        if (minPower === 0) {
-            bottomDb = this.currentScale === 'adc16' ? -96 : -130;
-        } else if (minPower > 0 && minPower < Infinity) {
-            bottomDb = Math.log10(Math.sqrt(minPower)) * 20;
-        } else {
-            bottomDb = -Infinity;
-        }
+        let bottomDb = this.currentScale === 'adc16' ? -96 : -130;
 
         return {
             rms: rms,
