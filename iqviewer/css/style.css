@@ -55,7 +55,7 @@ header {
 }
 
 header h1 {
-    font-size: 1.6em;
+    font-size: 1.4em;
     font-weight: 600;
 }
 
@@ -81,7 +81,12 @@ header h1 {
 }
 
 .panel-header h2 {
-    font-size: 1.1em;
+    font-size: 1em;
+    font-weight: 600;
+}
+
+h3 {
+    font-size: 1em;
     font-weight: 600;
 }
 
@@ -160,6 +165,8 @@ header h1 {
     font-family: 'Courier New', monospace;
     color: var(--color-fg);
     font-size: 0.95em;
+    min-width: 0;
+    overflow-wrap: anywhere;
 }
 
 /* Settings Panel */
