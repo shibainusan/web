@@ -182,14 +182,24 @@
                         <canvas id="fftCanvas" width="600" height="400"></canvas>
                     </div>
                     <div style="padding: 10px; border-top: 1px solid var(--color-border); background-color: rgba(0,0,0,0.02);">
-                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 10px;">
                             <div>
-                                <label style="font-weight: 600; font-size: 0.9em;">Total Power (Linear):</label>
+                                <label style="font-weight: 600; font-size: 0.9em;">FFT Total Power (Linear):</label>
                                 <span id="fftTotalPowerLinear" style="font-family: 'Courier New', monospace;">-</span>
                             </div>
                             <div>
-                                <label style="font-weight: 600; font-size: 0.9em;">Total Power (dB):</label>
+                                <label style="font-weight: 600; font-size: 0.9em;">FFT Total Power (dB):</label>
                                 <span id="fftTotalPowerDb" style="font-family: 'Courier New', monospace;">-</span>
+                            </div>
+                        </div>
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
+                            <div>
+                                <label style="font-weight: 600; font-size: 0.9em;">TimeDomain Power (Linear):</label>
+                                <span id="fftTimedomainPowerLinear" style="font-family: 'Courier New', monospace;">-</span>
+                            </div>
+                            <div>
+                                <label style="font-weight: 600; font-size: 0.9em;">TimeDomain Power (dB):</label>
+                                <span id="fftTimedomainPowerDb" style="font-family: 'Courier New', monospace;">-</span>
                             </div>
                         </div>
                     </div>
