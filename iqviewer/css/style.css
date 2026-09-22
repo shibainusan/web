@@ -89,9 +89,21 @@ header h1 {
     padding: 20px;
 }
 
+/* Compact layout for the panels above the waveform */
+.file-panel .panel-header,
+.info-panel .panel-header,
+.settings-panel .panel-header {
+    padding: 8px 20px;
+}
+
+.file-panel .panel-body,
+.info-panel .panel-body,
+.settings-panel .panel-body {
+    padding: 12px 20px;
+}
+
 /* File Panel */
 .file-panel .panel-body {
-    padding: 20px 20px;
     text-align: center;
 }
 
@@ -108,7 +120,7 @@ header h1 {
 
 .file-label {
     display: block;
-    padding: 10px 20px;
+    padding: 8px 16px;
     border: 2px dashed var(--color-border);
     border-radius: 8px;
     background-color: rgba(127, 127, 127, 0.05);
@@ -130,8 +142,9 @@ header h1 {
 /* Info Panel */
 .info-panel .panel-body {
     display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 15px 20px;
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: 6px 20px;
+    align-content: start;
 }
 
 .info-row {
@@ -159,7 +172,7 @@ header h1 {
 .settings-row {
     display: flex;
     gap: 30px;
-    margin-bottom: 25px;
+    margin-bottom: 12px;
 }
 
 .settings-row .settings-group {
@@ -168,7 +181,11 @@ header h1 {
 }
 
 .settings-group {
-    margin-bottom: 25px;
+    margin-bottom: 12px;
+}
+
+.settings-panel .panel-body > .settings-group:last-child {
+    margin-bottom: 0;
 }
 
 .settings-group {
@@ -207,8 +224,13 @@ header h1 {
 
 .range-sliders {
     display: flex;
-    flex-direction: column;
-    gap: 15px;
+    flex-wrap: wrap;
+    gap: 8px 30px;
+}
+
+.range-sliders .slider-group {
+    flex: 1;
+    min-width: 320px;
 }
 
 .slider-group {
@@ -219,12 +241,12 @@ header h1 {
 
 .slider-group label {
     font-size: 0.9em;
-    min-width: 100px;
+    min-width: 70px;
 }
 
 .slider-group .slider {
     flex: 1;
-    min-width: 200px;
+    min-width: 120px;
 }
 
 .slider-group span {
@@ -305,7 +327,7 @@ header h1 {
     gap: 10px;
     align-items: center;
     flex-wrap: wrap;
-    margin-bottom: 10px;
+    margin-bottom: 6px;
 }
 
 .marker-controls span {
@@ -336,7 +358,7 @@ header h1 {
 
 /* Button Styles */
 .btn {
-    padding: 10px 20px;
+    padding: 6px 16px;
     border: none;
     border-radius: 4px;
     font-size: 0.95em;
