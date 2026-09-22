@@ -39,6 +39,6 @@ usb0には192.168.3.2/24 を割り当てて回避。eth0はDHCPでアドレス�
 ```
 
 これでWebブラウザから管理画面に入れるようになった。
-組み込みpetalinuxなので今やったIPアドレス設定は再起動で消えてしまうので、Web管理画面からPersistent設定のipaddrを設定する。この設定はSPI-Flashに書かれる模様。
+組み込みpetalinuxなので今やったIPアドレス設定は再起動で消えてしまうので、Web管理画面からPersistent設定のipaddrを設定する。この設定はSPI-Flashに書かれる模様。 
 
-![persistant settings](<2026-09-22 12_32_05.png>)
+![persistantsettings](./2026-09-22_12_32_05.png)
