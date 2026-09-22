@@ -78,3 +78,7 @@ iio_readdev -u ip:192.168.2.131 -b 4000000 -s 2000000 cf-ad9361-lpc  1>.\iqcap20
 cma: __cma_alloc: reserved: alloc failed, req-size: 3907 pages, ret: -12
 cma: number of available pages: 187@69+189@4163+189@8259+4029@12355=> 4594 free of 16384 total pages
 ```
+
+とりあえずそれっぽい波形は取れたが若干怪しい。 [WiFi24G_100ms20Msps16bit.raw](./WiFi24G_100ms20Msps16bit.raw)
+
+![alt text](./2026-09-23_08_38_14.png)
