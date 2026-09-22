@@ -49,9 +49,6 @@ const elements = {
     endTimeValue: document.getElementById('endTimeValue'),
     zoomSlider: document.getElementById('zoomSlider'),
     zoomValue: document.getElementById('zoomValue'),
-    prevButton: document.getElementById('prevButton'),
-    nextButton: document.getElementById('nextButton'),
-    resetButton: document.getElementById('resetButton'),
     setMarker1Button: document.getElementById('setMarker1Button'),
     setMarker2Button: document.getElementById('setMarker2Button'),
     clearMarkersButton: document.getElementById('clearMarkersButton'),
@@ -91,10 +88,6 @@ function setupEventListeners() {
     elements.endTimeSlider.addEventListener('input', handleEndTimeSliderChange);
     elements.zoomSlider.addEventListener('input', handleZoomChange);
     elements.spectrogramOverlapSelector.addEventListener('change', handleSpectrogramOverlapChange);
-
-    elements.prevButton.addEventListener('click', handlePrevious);
-    elements.nextButton.addEventListener('click', handleNext);
-    elements.resetButton.addEventListener('click', handleReset);
 
     elements.setMarker1Button.addEventListener('click', () => startMarkerMode('marker1'));
     elements.setMarker2Button.addEventListener('click', () => startMarkerMode('marker2'));
@@ -303,45 +296,6 @@ function handleZoomChange(event) {
 
     elements.startTime.value = newStartMs.toFixed(3);
     elements.endTime.value = newEndMs.toFixed(3);
-    updateWaveform();
-}
-
-function handlePrevious() {
-    const startMs = parseFloat(elements.startTime.value) || 0;
-    const endMs = parseFloat(elements.endTime.value) || sampleToMs(iqData.sampleCount);
-    const rangeMs = endMs - startMs;
-    const stepMs = rangeMs / 2;
-
-    const newStartMs = Math.max(0, startMs - stepMs);
-    const newEndMs = Math.max(rangeMs, newStartMs + rangeMs);
-
-    elements.startTime.value = newStartMs.toFixed(3);
-    elements.endTime.value = Math.min(sampleToMs(iqData.sampleCount), newEndMs).toFixed(3);
-    updateWaveform();
-}
-
-function handleNext() {
-    const startMs = parseFloat(elements.startTime.value) || 0;
-    const endMs = parseFloat(elements.endTime.value) || sampleToMs(iqData.sampleCount);
-    const rangeMs = endMs - startMs;
-    const stepMs = rangeMs / 2;
-
-    const totalTimeMs = sampleToMs(iqData.sampleCount);
-    const newEndMs = Math.min(totalTimeMs, endMs + stepMs);
-    const newStartMs = Math.max(0, newEndMs - rangeMs);
-
-    elements.startTime.value = newStartMs.toFixed(3);
-    elements.endTime.value = newEndMs.toFixed(3);
-    updateWaveform();
-}
-
-function handleReset() {
-    elements.startIndex.value = 0;
-    elements.endIndex.value = iqData.sampleCount - 1;
-    elements.startTime.value = '0.000';
-    elements.endTime.value = sampleToMs(iqData.sampleCount - 1).toFixed(3);
-    elements.zoomSlider.value = 100;
-    elements.zoomValue.textContent = '100';
     updateWaveform();
 }
 
