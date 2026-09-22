@@ -1051,7 +1051,7 @@ function runVectorCWTest() {
         const waveformResult = validateWaveformData(iqData.iValues, iqData.qValues, frequencyMHz);
         resultsText += `Waveform Data Validation:\n`;
         resultsText += `  Status: ${waveformResult.passed ? 'PASSED' : 'FAILED'}\n`;
-        resultsText += `  IQ Amplitude: ${waveformResult.iqAmplitude.toFixed(4)}\n`;
+        resultsText += `  IQ Amplitude: ${waveformResult.iqAmplitude.toFixed(4)} (expected ${waveformResult.expectedAmplitude.toFixed(4)})\n`;
         resultsText += `  I RMS: ${waveformResult.iRMS.toFixed(4)}, Q RMS: ${waveformResult.qRMS.toFixed(4)}\n`;
         resultsText += `  Data Valid: ${waveformResult.dataValid}\n\n`;
         allPassed = allPassed && waveformResult.passed;

@@ -21,9 +21,6 @@ function validateFFTPeak(iValues, qValues, expectedFreqMHz = 15, toleranceMHz = 
         }
     }
 
-    // Previous implementation normalized by 2/Σw (one-sided spectrum convention); keep its +6.02 dB offset
-    peakMagnitude += 20 * Math.log10(2);
-
     const detectedFreqMHz = binToFrequencyHz(peakBinIdx, fftSize, samplingRateMsps * 1e6) / 1e6;
 
     // Check if within tolerance
@@ -40,7 +37,7 @@ function validateFFTPeak(iValues, qValues, expectedFreqMHz = 15, toleranceMHz = 
     };
 }
 
-function validateWaveformData(iValues, qValues, expectedFreqMHz = 15) {
+function validateWaveformData(iValues, qValues, expectedFreqMHz = 15, expectedAmplitude = TEST_SIGNAL_AMPLITUDE, toleranceRatio = 0.2) {
     if (!iValues || !qValues || iValues.length === 0) {
         return { passed: false, iqAmplitude: null, dataValid: false, error: "Invalid input data" };
     }
@@ -54,13 +51,13 @@ function validateWaveformData(iValues, qValues, expectedFreqMHz = 15) {
     iRMS = Math.sqrt(iRMS / iValues.length);
     qRMS = Math.sqrt(qRMS / qValues.length);
 
-    // For Vector CW: I and Q should have similar RMS (both ~0.707 for -3dB normalized)
+    // For Vector CW: I and Q should have similar RMS (both = amplitude/√2)
     const avgRMS = (iRMS + qRMS) / 2;
     const iqAmplitude = Math.sqrt(iRMS * iRMS + qRMS * qRMS);
 
-    // Check if amplitude is in normal range (0.8 to 1.2)
-    const passed = iqAmplitude >= 0.8 && iqAmplitude <= 1.2;
-    const dataValid = iRMS > 0 && qRMS > 0 && Math.abs(iRMS - qRMS) < 0.2;
+    // Check if amplitude is within expectedAmplitude ± toleranceRatio
+    const passed = Math.abs(iqAmplitude - expectedAmplitude) <= expectedAmplitude * toleranceRatio;
+    const dataValid = iRMS > 0 && qRMS > 0 && Math.abs(iRMS - qRMS) < avgRMS * toleranceRatio;
 
     return {
         passed: passed && dataValid,
@@ -68,6 +65,7 @@ function validateWaveformData(iValues, qValues, expectedFreqMHz = 15) {
         iRMS: iRMS,
         qRMS: qRMS,
         dataValid: dataValid,
+        expectedAmplitude: expectedAmplitude,
         expectedFreqMHz: expectedFreqMHz
     };
 }

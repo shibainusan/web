@@ -1,11 +1,13 @@
 // Vector CW Test Data Generator
 // Generate +15MHz (or arbitrary frequency) CW signal for testing
 
+const TEST_SIGNAL_AMPLITUDE = 0.1; // -20 dBFS: 20*log10(0.1) = -20 dB
+
 function generateVectorCW(frequencyMHz = 15, durationMs = 1000, samplingRateMsps = 122.88) {
     const samplingRateHz = samplingRateMsps * 1e6;
     const frequencyHz = frequencyMHz * 1e6;
     const numSamples = Math.floor((durationMs / 1000) * samplingRateHz);
-    const amplitude = 0.1; // -20 dBFS: 20*log10(0.1) = -20 dB
+    const amplitude = TEST_SIGNAL_AMPLITUDE;
 
     // Create Float32Array for I and Q interleaved (I, Q, I, Q, ...)
     const iqData = new Float32Array(numSamples * 2);
@@ -32,7 +34,7 @@ function generateChirp(startFreqMHz = 0, sweepVelocityMHzPerMs = 0.05, durationM
     const startFreqHz = startFreqMHz * 1e6;
     const sweepVelocityHzPerSec = sweepVelocityMHzPerMs * 1e9; // Convert MHz/ms to Hz/s
     const numSamples = Math.floor((durationMs / 1000) * samplingRateHz);
-    const amplitude = 0.1; // -20 dBFS: 20*log10(0.1) = -20 dB
+    const amplitude = TEST_SIGNAL_AMPLITUDE;
 
     // Create Float32Array for I and Q interleaved (I, Q, I, Q, ...)
     const iqData = new Float32Array(numSamples * 2);
