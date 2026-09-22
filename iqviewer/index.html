@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="lang" content="en">
     <title>IQ Data Viewer</title>
-    <link rel="stylesheet" href="css/style.css?v=3">
+    <link rel="stylesheet" href="css/style.css?v=4">
 </head>
 <body>
     <div class="container">
@@ -174,8 +174,8 @@
                     <div class="panel-body canvas-body">
                         <canvas id="fftCanvas" width="600" height="400"></canvas>
                     </div>
-                    <div style="padding: 10px; border-top: 1px solid var(--color-border); background-color: rgba(0,0,0,0.02);">
-                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 10px;">
+                    <div style="padding: 8px 10px; border-top: 1px solid var(--color-border); background-color: rgba(0,0,0,0.02);">
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 4px;">
                             <div>
                                 <label style="font-weight: 600; font-size: 0.9em;">FFT Total Power (Linear):</label>
                                 <span id="fftTotalPowerLinear" style="font-family: 'Courier New', monospace;">-</span>
@@ -217,7 +217,7 @@
             </div>
 
             <!-- Test Control Panel -->
-            <div class="panel" style="margin-top: 20px;">
+            <div class="panel">
                 <div class="panel-header">
                     <h2>Test Waveform</h2>
                 </div>
@@ -242,8 +242,8 @@
                             <label for="testDurationInput" style="font-weight: 600; font-size: 0.9em;">Duration (ms):</label>
                             <input type="number" id="testDurationInput" value="10" step="10" min="1" max="1000" style="width: 100px; padding: 8px; border: 1px solid var(--color-border); border-radius: 4px; background-color: var(--color-bg); color: var(--color-fg);">
                         </div>
-                        <button id="generateTestDataBtn" class="btn btn-primary" style="margin-top: 20px;">Generate Test Data</button>
-                        <button id="runTestBtn" class="btn btn-secondary" style="margin-top: 20px;">Run Test</button>
+                        <button id="generateTestDataBtn" class="btn btn-primary">Generate Test Data</button>
+                        <button id="runTestBtn" class="btn btn-secondary">Run Test</button>
                     </div>
                     <div id="testResults" style="margin-top: 15px; padding: 10px; border: 1px solid var(--color-border); border-radius: 4px; background-color: rgba(0,0,0,0.02); display: none;">
                         <h3 style="margin-top: 0;">Test Results</h3>
@@ -253,12 +253,12 @@
             </div>
 
             <!-- Status Log -->
-            <div class="panel" style="margin-top: 20px;">
+            <div class="panel">
                 <div class="panel-header">
                     <h2>Status Log</h2>
                 </div>
                 <div class="panel-body" style="padding: 0;">
-                    <textarea id="statusLog" readonly style="width: 100%; height: 120px; padding: 10px; border: none; border-radius: 0; font-family: 'Courier New', monospace; font-size: 0.85em; resize: none; background-color: var(--color-bg); color: var(--color-fg);"></textarea>
+                    <textarea id="statusLog" readonly style="width: 100%; height: 80px; padding: 10px; border: none; border-radius: 0; font-family: 'Courier New', monospace; font-size: 0.85em; resize: none; background-color: var(--color-bg); color: var(--color-fg);"></textarea>
                     <div id="progress" class="progress-bar" style="display:none; margin: 10px;">
                         <div id="progressFill" class="progress-fill"></div>
                     </div>

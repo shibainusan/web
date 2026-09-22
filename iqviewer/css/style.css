@@ -45,24 +45,24 @@ body {
     width: 100%;
     max-width: 1400px;
     margin: 0 auto;
-    padding: 20px;
+    padding: 12px 20px;
 }
 
 header {
-    margin-bottom: 30px;
+    margin-bottom: 12px;
     border-bottom: 2px solid var(--color-border);
-    padding-bottom: 15px;
+    padding-bottom: 8px;
 }
 
 header h1 {
-    font-size: 2em;
+    font-size: 1.6em;
     font-weight: 600;
 }
 
 .content {
     display: flex;
     flex-direction: column;
-    gap: 20px;
+    gap: 12px;
 }
 
 /* Panel Styles */
@@ -75,7 +75,7 @@ header h1 {
 }
 
 .panel-header {
-    padding: 15px 20px;
+    padding: 8px 20px;
     border-bottom: 1px solid var(--color-panel-border);
     background-color: rgba(0, 0, 0, 0.02);
 }
@@ -86,16 +86,10 @@ header h1 {
 }
 
 .panel-body {
-    padding: 20px;
+    padding: 12px 20px;
 }
 
 /* Compact layout for the panels above the waveform */
-.file-panel .panel-header,
-.info-panel .panel-header,
-.settings-panel .panel-header {
-    padding: 8px 20px;
-}
-
 .file-panel .panel-body,
 .info-panel .panel-body,
 .settings-panel .panel-body {
@@ -397,7 +391,7 @@ header h1 {
 
 /* Canvas Panel */
 .canvas-panel {
-    margin-top: 20px;
+    margin-top: 0;
 }
 
 .canvas-body {
