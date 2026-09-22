@@ -6,38 +6,8 @@ function validateFFTPeak(iValues, qValues, expectedFreqMHz = 15, toleranceMHz = 
     }
 
     const fftSize = Math.min(1024, iValues.length);
-    const fft = new FFT(fftSize);
-
-    // Prepare FFT input with Hamming window
-    const fftInput = [];
-    for (let i = 0; i < fftSize; i++) {
-        const window = 0.54 - 0.46 * Math.cos(2 * Math.PI * i / (fftSize - 1));
-        fftInput.push(iValues[i] * window);
-        fftInput.push(qValues[i] * window);
-    }
-
-    // Execute FFT
-    const output = fft.createComplexArray();
-    for (let i = 0; i < fftInput.length; i++) {
-        output[i] = fftInput[i];
-    }
-    fft.transform(output, fftInput);
-
-    // Calculate magnitude spectrum
-    let windowSum = 0;
-    for (let i = 0; i < fftSize; i++) {
-        const window = 0.54 - 0.46 * Math.cos(2 * Math.PI * i / (fftSize - 1));
-        windowSum += window;
-    }
-    const normalization = 2 / (fftSize * windowSum / fftSize);
-
-    const magnitude = new Float32Array(fftSize);
-    for (let i = 0; i < fftSize; i++) {
-        const real = output[2 * i];
-        const imag = output[2 * i + 1];
-        const mag = Math.sqrt(real * real + imag * imag) * normalization;
-        magnitude[i] = 20 * Math.log10(mag + 1e-10);
-    }
+    const spectrum = computeWindowedFFT(iValues, qValues, 0, fftSize);
+    const magnitude = spectrumToMagnitudeDb(spectrum);
 
     // Find peak across all frequencies (positive and negative)
     let peakBinIdx = 0;
@@ -51,20 +21,10 @@ function validateFFTPeak(iValues, qValues, expectedFreqMHz = 15, toleranceMHz = 
         }
     }
 
-    // Convert bin index to frequency
-    const samplingRateHz = samplingRateMsps * 1e6;
-    let detectedFreqHz;
+    // Previous implementation normalized by 2/Σw (one-sided spectrum convention); keep its +6.02 dB offset
+    peakMagnitude += 20 * Math.log10(2);
 
-    // FFT bin to frequency mapping:
-    // bins 0 to fftSize/2-1 map to 0 to +fs/2
-    // bins fftSize/2 to fftSize-1 map to -fs/2 to 0
-    if (peakBinIdx < fftSize / 2) {
-        detectedFreqHz = (peakBinIdx / fftSize) * samplingRateHz;
-    } else {
-        detectedFreqHz = ((peakBinIdx - fftSize) / fftSize) * samplingRateHz;
-    }
-
-    const detectedFreqMHz = detectedFreqHz / 1e6;
+    const detectedFreqMHz = binToFrequencyHz(peakBinIdx, fftSize, samplingRateMsps * 1e6) / 1e6;
 
     // Check if within tolerance
     const freqDiff = Math.abs(detectedFreqMHz - expectedFreqMHz);
@@ -118,7 +78,6 @@ function validateSpectrogramEnergy(spectrogram, expectedFreqMHz = 15, toleranceM
     }
 
     const fftSize = spectrogram[0].length;
-    const samplingRateHz = samplingRateMsps * 1e6;
 
     // Average energy across all frames
     const avgEnergy = new Float32Array(fftSize);
@@ -140,14 +99,7 @@ function validateSpectrogramEnergy(spectrogram, expectedFreqMHz = 15, toleranceM
         }
     }
 
-    // Convert bin to frequency (accounting for FFT shift)
-    let freqHz;
-    if (peakBinIdx < fftSize / 2) {
-        freqHz = (peakBinIdx / fftSize) * samplingRateHz;
-    } else {
-        freqHz = ((peakBinIdx - fftSize) / fftSize) * samplingRateHz;
-    }
-    const maxEnergyFreqMHz = freqHz / 1e6;
+    const maxEnergyFreqMHz = binToFrequencyHz(peakBinIdx, fftSize, samplingRateMsps * 1e6) / 1e6;
 
     // Check if within tolerance
     const freqDiff = Math.abs(maxEnergyFreqMHz - expectedFreqMHz);

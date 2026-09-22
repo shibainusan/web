@@ -417,70 +417,11 @@ function calculateFFT() {
         return;
     }
 
-    // Get complex IQ data for FFT with Hamming window
-    const fftInput = [];
-    let timedomainPower = 0;
-    for (let i = 0; i < fftSize; i++) {
-        const idx = startSample + i;
-        // Apply Hamming window
-        const window = 0.54 - 0.46 * Math.cos(2 * Math.PI * i / (fftSize - 1));
-        if (idx < iqData.sampleCount) {
-            const iVal = iqData.iValues[idx];
-            const qVal = iqData.qValues[idx];
-            const power = iVal * iVal + qVal * qVal;
-            timedomainPower += power;
-            fftInput.push(iVal * window);
-            fftInput.push(qVal * window);
-        }
-    }
-    // Normalize timedomain power
-    timedomainPower /= fftSize;
-
-    // Calculate FFT using fft.js
-    const fft = new FFT(fftSize);
-    const output = fft.createComplexArray();
-    // Copy input to output array for FFT processing
-    for (let i = 0; i < fftInput.length; i++) {
-        output[i] = fftInput[i];
-    }
-    fft.transform(output, fftInput);
-
-    // Calculate magnitude spectrum (both positive and negative frequencies)
-    const magnitude = new Float32Array(fftSize);
-    const samplingRateMsps = getSamplingRateMsps();
-    const samplingRateHz = samplingRateMsps * 1e6;
-
-    // Normalization factor for window and FFT
-    let windowSum = 0;
-    let windowPowerSum = 0;
-    for (let i = 0; i < fftSize; i++) {
-        const window = 0.54 - 0.46 * Math.cos(2 * Math.PI * i / (fftSize - 1));
-        windowSum += window;
-        windowPowerSum += window * window;
-    }
-
-    // Calculate magnitudes for all frequencies and FFT power
-    let fftPowerLinear = 0;
-    for (let i = 0; i < fftSize; i++) {
-        const real = output[2 * i];
-        const imag = output[2 * i + 1];
-        const binPower = real * real + imag * imag;
-        fftPowerLinear += binPower;
-        const mag = Math.sqrt(binPower) / windowSum; // Amplitude-corrected (CW peak reads correctly)
-        magnitude[i] = 20 * Math.log10(mag + 1e-10); // Convert to dB
-    }
-    // Parseval with window power correction: P = Σ|X|² / (N·Σw²)
-    fftPowerLinear /= fftSize * windowPowerSum;
-
-    // Create frequency array with negative frequencies (-fs/2 to fs/2)
-    const frequencies = new Float32Array(fftSize);
-    for (let i = 0; i < fftSize; i++) {
-        if (i < fftSize / 2) {
-            frequencies[i] = i * samplingRateHz / fftSize;
-        } else {
-            frequencies[i] = (i - fftSize) * samplingRateHz / fftSize;
-        }
-    }
+    const timedomainPower = timeDomainPower(iqData.iValues, iqData.qValues, startSample, fftSize);
+    const spectrum = computeWindowedFFT(iqData.iValues, iqData.qValues, startSample, fftSize);
+    const magnitude = spectrumToMagnitudeDb(spectrum);
+    const fftPowerLinear = spectrumTotalPower(spectrum);
+    const frequencies = createFrequencyAxis(fftSize, getSamplingRateMsps() * 1e6);
 
     // Get min/max values to match Waveform Display
     const amplitudeUnit = elements.amplitudeUnit.value;
@@ -680,56 +621,8 @@ function calculateSpectrogram() {
         return;
     }
 
-    // Calculate number of frames
-    const numFrames = Math.floor((duration - fftSize) / spectrogramHopSize) + 1;
-    const samplingRateMsps = getSamplingRateMsps();
-    const samplingRateHz = samplingRateMsps * 1e6;
-
-    // Create spectrogram data (frames x frequency bins)
-    const spectrogram = new Array(numFrames);
-    for (let frame = 0; frame < numFrames; frame++) {
-        spectrogram[frame] = new Float32Array(fftSize);
-    }
-
-    // Normalization factor for window
-    let windowSum = 0;
-    for (let i = 0; i < fftSize; i++) {
-        const window = 0.54 - 0.46 * Math.cos(2 * Math.PI * i / (fftSize - 1));
-        windowSum += window;
-    }
-    const normalization = 1 / windowSum;
-
-    // Calculate FFT for each frame
-    for (let frame = 0; frame < numFrames; frame++) {
-        const frameStartSample = startSample + frame * spectrogramHopSize;
-        const fftInput = [];
-
-        // Get IQ data for this frame with Hamming window
-        for (let i = 0; i < fftSize; i++) {
-            const idx = frameStartSample + i;
-            const window = 0.54 - 0.46 * Math.cos(2 * Math.PI * i / (fftSize - 1));
-            if (idx < iqData.sampleCount) {
-                fftInput.push(iqData.iValues[idx] * window);
-                fftInput.push(iqData.qValues[idx] * window);
-            }
-        }
-
-        // Calculate FFT
-        const fft = new FFT(fftSize);
-        const output = fft.createComplexArray();
-        for (let i = 0; i < fftInput.length; i++) {
-            output[i] = fftInput[i];
-        }
-        fft.transform(output, fftInput);
-
-        // Calculate magnitudes for all frequency bins
-        for (let i = 0; i < fftSize; i++) {
-            const real = output[2 * i];
-            const imag = output[2 * i + 1];
-            const mag = Math.sqrt(real * real + imag * imag) * normalization;
-            spectrogram[frame][i] = 20 * Math.log10(mag + 1e-10); // Convert to dB
-        }
-    }
+    const samplingRateHz = getSamplingRateMsps() * 1e6;
+    const spectrogram = computeSpectrogram(iqData.iValues, iqData.qValues, startSample, endSample, fftSize, spectrogramHopSize);
 
     drawSpectrogram(spectrogram, samplingRateHz, startSample);
 }
@@ -1184,51 +1077,10 @@ function runVectorCWTest() {
             const endSample = msToSample(Math.max(marker1Time, marker2Time));
             const hopSize = 1024;
             const fftSize = 1024;
-            const duration = endSample - startSample;
-            const numFrames = Math.floor((duration - fftSize) / hopSize) + 1;
+            const numFrames = Math.floor((endSample - startSample - fftSize) / hopSize) + 1;
 
             if (numFrames > 0) {
-                const spectrogram = new Array(numFrames);
-                for (let frame = 0; frame < numFrames; frame++) {
-                    spectrogram[frame] = new Float32Array(fftSize);
-                }
-
-                // Calculate FFT for each frame
-                for (let frame = 0; frame < numFrames; frame++) {
-                    const frameStartSample = startSample + frame * hopSize;
-                    const fftInput = [];
-
-                    for (let i = 0; i < fftSize; i++) {
-                        const idx = frameStartSample + i;
-                        const window = 0.54 - 0.46 * Math.cos(2 * Math.PI * i / (fftSize - 1));
-                        if (idx < iqData.sampleCount) {
-                            fftInput.push(iqData.iValues[idx] * window);
-                            fftInput.push(iqData.qValues[idx] * window);
-                        }
-                    }
-
-                    const fft = new FFT(fftSize);
-                    const output = fft.createComplexArray();
-                    for (let i = 0; i < fftInput.length; i++) {
-                        output[i] = fftInput[i];
-                    }
-                    fft.transform(output, fftInput);
-
-                    let windowSum = 0;
-                    for (let i = 0; i < fftSize; i++) {
-                        const window = 0.54 - 0.46 * Math.cos(2 * Math.PI * i / (fftSize - 1));
-                        windowSum += window;
-                    }
-                    const normalization = 1 / windowSum;
-
-                    for (let i = 0; i < fftSize; i++) {
-                        const real = output[2 * i];
-                        const imag = output[2 * i + 1];
-                        const mag = Math.sqrt(real * real + imag * imag) * normalization;
-                        spectrogram[frame][i] = 20 * Math.log10(mag + 1e-10);
-                    }
-                }
-
+                const spectrogram = computeSpectrogram(iqData.iValues, iqData.qValues, startSample, endSample, fftSize, hopSize);
                 const spectroResult = validateSpectrogramEnergy(spectrogram, frequencyMHz, 0.5, samplingRateMsps);
                 resultsText += `Spectrogram Energy Validation:\n`;
                 resultsText += `  Status: ${spectroResult.passed ? 'PASSED' : 'FAILED'}\n`;

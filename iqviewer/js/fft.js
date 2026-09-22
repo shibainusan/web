@@ -20,7 +20,8 @@ class FFT {
         return result;
     }
 
-    transform(output, input) {
+    // In-place FFT of interleaved complex data [re0, im0, re1, im1, ...]
+    transform(output) {
         const N = this.size;
 
         // Bit reversal
