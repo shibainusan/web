@@ -452,24 +452,25 @@ function calculateFFT() {
 
     // Normalization factor for window and FFT
     let windowSum = 0;
+    let windowPowerSum = 0;
     for (let i = 0; i < fftSize; i++) {
         const window = 0.54 - 0.46 * Math.cos(2 * Math.PI * i / (fftSize - 1));
         windowSum += window;
+        windowPowerSum += window * window;
     }
-    const normalization = 1 / windowSum;
 
     // Calculate magnitudes for all frequencies and FFT power
     let fftPowerLinear = 0;
     for (let i = 0; i < fftSize; i++) {
         const real = output[2 * i];
         const imag = output[2 * i + 1];
-        const magSquared = (real * real + imag * imag) / (windowSum * windowSum);
-        fftPowerLinear += magSquared;
-        const mag = Math.sqrt(magSquared);
+        const binPower = real * real + imag * imag;
+        fftPowerLinear += binPower;
+        const mag = Math.sqrt(binPower) / windowSum; // Amplitude-corrected (CW peak reads correctly)
         magnitude[i] = 20 * Math.log10(mag + 1e-10); // Convert to dB
     }
-    // Normalize FFT power by FFT size
-    fftPowerLinear /= fftSize;
+    // Parseval with window power correction: P = Σ|X|² / (N·Σw²)
+    fftPowerLinear /= fftSize * windowPowerSum;
 
     // Create frequency array with negative frequencies (-fs/2 to fs/2)
     const frequencies = new Float32Array(fftSize);
