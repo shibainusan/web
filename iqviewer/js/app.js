@@ -57,6 +57,8 @@ const elements = {
     burstLengthValue: document.getElementById('burstLengthValue'),
     canvas: document.getElementById('waveformCanvas'),
     fftCanvas: document.getElementById('fftCanvas'),
+    fftTotalPowerLinear: document.getElementById('fftTotalPowerLinear'),
+    fftTotalPowerDb: document.getElementById('fftTotalPowerDb'),
     spectrogramCanvas: document.getElementById('spectrogramCanvas'),
     spectrogramOverlapSelector: document.getElementById('spectrogramOverlapSelector'),
     statusLog: document.getElementById('statusLog'),
@@ -445,7 +447,7 @@ function calculateFFT() {
         const window = 0.54 - 0.46 * Math.cos(2 * Math.PI * i / (fftSize - 1));
         windowSum += window;
     }
-    const normalization = 2 / (fftSize * windowSum / fftSize);
+    const normalization = 1 / windowSum;
 
     // Calculate magnitudes for all frequencies
     for (let i = 0; i < fftSize; i++) {
@@ -480,7 +482,33 @@ function calculateFFT() {
         maxValue = stats.max;
     }
 
+    // Calculate total in-band power
+    calculateTotalPower(magnitude);
+
     drawFFT(magnitude, frequencies, minValue, maxValue);
+}
+
+function calculateTotalPower(magnitude) {
+    const fftSize = magnitude.length;
+
+    // Convert dB magnitudes back to linear power for summation
+    let totalPowerLinear = 0;
+    for (let i = 0; i < fftSize; i++) {
+        // magnitude[i] is in dB: magnitude_dB = 20*log10(mag)
+        // Convert back: mag = 10^(magnitude_dB / 20)
+        const magLinear = Math.pow(10, magnitude[i] / 20);
+        totalPowerLinear += magLinear * magLinear;
+    }
+
+    // Normalize by FFT size
+    const totalPowerNormalized = totalPowerLinear / fftSize;
+
+    // Display results
+    elements.fftTotalPowerLinear.textContent = totalPowerNormalized.toFixed(6);
+
+    // Convert to dB (RMS power)
+    const totalPowerDb = 10 * Math.log10(totalPowerNormalized + 1e-10);
+    elements.fftTotalPowerDb.textContent = totalPowerDb.toFixed(2) + ' dB';
 }
 
 function drawFFT(magnitude, frequencies, minValue, maxValue) {
@@ -617,6 +645,10 @@ function clearFFT() {
     const height = elements.fftCanvas.height;
     ctx.fillStyle = '#ffffff';
     ctx.fillRect(0, 0, width, height);
+
+    // Clear total power display
+    elements.fftTotalPowerLinear.textContent = '-';
+    elements.fftTotalPowerDb.textContent = '-';
 }
 
 function calculateSpectrogram() {
@@ -655,7 +687,7 @@ function calculateSpectrogram() {
         const window = 0.54 - 0.46 * Math.cos(2 * Math.PI * i / (fftSize - 1));
         windowSum += window;
     }
-    const normalization = 2 / (fftSize * windowSum / fftSize);
+    const normalization = 1 / windowSum;
 
     // Calculate FFT for each frame
     for (let frame = 0; frame < numFrames; frame++) {
@@ -1177,7 +1209,7 @@ function runVectorCWTest() {
                         const window = 0.54 - 0.46 * Math.cos(2 * Math.PI * i / (fftSize - 1));
                         windowSum += window;
                     }
-                    const normalization = 2 / (fftSize * windowSum / fftSize);
+                    const normalization = 1 / windowSum;
 
                     for (let i = 0; i < fftSize; i++) {
                         const real = output[2 * i];

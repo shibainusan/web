@@ -42,3 +42,39 @@ usb0には192.168.3.2/24 を割り当てて回避。eth0はDHCPでアドレス�
 組み込みpetalinuxなので今やったIPアドレス設定は再起動で消えてしまうので、Web管理画面からPersistent設定のipaddrを設定する。この設定はSPI-Flashに書かれる模様。 
 
 ![persistantsettings](./2026-09-22_12_32_05.png)
+
+### libiioを入れる
+
+IQ転送にはlibiioを使っているので、Windows用クライアントツールが必要なんだが、入れ方の正解がわからない。↓のWindows用バイナリを展開してパスを通せばよさそうなんだが、コレジャナイ感がする。
+
+https://github.com/analogdevicesinc/libiio
+
+ADI ACEを入れると必要そうなものは一式入る。libiio関連バイナリがc:\Windows\system32\ にブチ込まれるぞ。
+
+https://www.analog.com/jp/resources/evaluation-hardware-and-software/evaluation-development-platforms/ace-software.html
+
+コマンドプロンプトでiio_info実行してデバイス情報取れればOK. [iio_info.txt](./iio_info.txt)
+
+```bash
+iio_info.exe -u ip:192.168.2.131
+```
+
+## IQキャプチャしてみる
+
+宅内WiFi 2.4GHzをIQキャプチャする。管理WebのSpectrogramで様子を見る。
+![maia SDR](2026-09-22_13_26_56.png)
+
+周波数やGain設定はMaia SDR側で設定する。CLIでもできるが、IIOが難解すぎてやりたくない。
+
+この状態から、↓のコマンドでIQキャプチャできる。
+```bash
+iio_readdev -u ip:192.168.2.131 -b 4000000 -s 2000000 cf-ad9361-lpc  1>.\iqcap20Msps.raw
+```
+
+-s はサンプル数。-b はiioバッファサイズなのだが詳細不明。
+
+あまり大きい値を指定するとlinux UARTにエラーが出る。
+```bash
+cma: __cma_alloc: reserved: alloc failed, req-size: 3907 pages, ret: -12
+cma: number of available pages: 187@69+189@4163+189@8259+4029@12355=> 4594 free of 16384 total pages
+```

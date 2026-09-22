@@ -140,7 +140,7 @@
 
                         <div class="settings-group">
                             <label for="zoomSlider">Zoom: <span id="zoomValue">100</span>%</label>
-                            <input type="range" id="zoomSlider" min="100" max="2000" value="100" class="slider">
+                            <input type="range" id="zoomSlider" min="100" max="999999" value="100" class="slider">
                         </div>
                     </div>
 
@@ -180,6 +180,18 @@
                     </div>
                     <div class="panel-body canvas-body">
                         <canvas id="fftCanvas" width="600" height="400"></canvas>
+                    </div>
+                    <div style="padding: 10px; border-top: 1px solid var(--color-border); background-color: rgba(0,0,0,0.02);">
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
+                            <div>
+                                <label style="font-weight: 600; font-size: 0.9em;">Total Power (Linear):</label>
+                                <span id="fftTotalPowerLinear" style="font-family: 'Courier New', monospace;">-</span>
+                            </div>
+                            <div>
+                                <label style="font-weight: 600; font-size: 0.9em;">Total Power (dB):</label>
+                                <span id="fftTotalPowerDb" style="font-family: 'Courier New', monospace;">-</span>
+                            </div>
+                        </div>
                     </div>
                 </div>
 
