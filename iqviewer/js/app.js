@@ -7,6 +7,7 @@ let marker1Amplitude = null;
 let marker2Time = null;
 let marker2Amplitude = null;
 let markerMode = null; // 'marker1' or 'marker2'
+let spectrogramHopSize = 512; // Default 50% overlap
 
 function getSamplingRateMsps() {
     return parseFloat(elements.samplingRateSelector.value);
@@ -60,6 +61,7 @@ const elements = {
     canvas: document.getElementById('waveformCanvas'),
     fftCanvas: document.getElementById('fftCanvas'),
     spectrogramCanvas: document.getElementById('spectrogramCanvas'),
+    spectrogramOverlapSelector: document.getElementById('spectrogramOverlapSelector'),
     statusLog: document.getElementById('statusLog'),
     progress: document.getElementById('progress'),
     progressFill: document.getElementById('progressFill')
@@ -88,6 +90,7 @@ function setupEventListeners() {
     elements.startTimeSlider.addEventListener('input', handleStartTimeSliderChange);
     elements.endTimeSlider.addEventListener('input', handleEndTimeSliderChange);
     elements.zoomSlider.addEventListener('input', handleZoomChange);
+    elements.spectrogramOverlapSelector.addEventListener('change', handleSpectrogramOverlapChange);
 
     elements.prevButton.addEventListener('click', handlePrevious);
     elements.nextButton.addEventListener('click', handleNext);
@@ -669,7 +672,8 @@ function calculateSpectrogram() {
     }
 
     const fftSize = 1024;
-    const hopSize = 1024; // 0% overlap
+    const overlapPercent = parseInt(elements.spectrogramOverlapSelector.value);
+    spectrogramHopSize = Math.floor(fftSize * (1 - overlapPercent / 100));
     const startSample = msToSample(Math.min(marker1Time, marker2Time));
     const endSample = msToSample(Math.max(marker1Time, marker2Time));
     const duration = endSample - startSample;
@@ -681,7 +685,7 @@ function calculateSpectrogram() {
     }
 
     // Calculate number of frames
-    const numFrames = Math.floor((duration - fftSize) / hopSize) + 1;
+    const numFrames = Math.floor((duration - fftSize) / spectrogramHopSize) + 1;
     const samplingRateMsps = getSamplingRateMsps();
     const samplingRateHz = samplingRateMsps * 1e6;
 
@@ -701,7 +705,7 @@ function calculateSpectrogram() {
 
     // Calculate FFT for each frame
     for (let frame = 0; frame < numFrames; frame++) {
-        const frameStartSample = startSample + frame * hopSize;
+        const frameStartSample = startSample + frame * spectrogramHopSize;
         const fftInput = [];
 
         // Get IQ data for this frame with Hamming window
@@ -842,13 +846,12 @@ function drawSpectrogram(spectrogram, samplingRateHz, startSample = 0) {
     // Draw time axis labels
     ctx.textAlign = 'right';
     ctx.textBaseline = 'middle';
-    const hopSize = 1024; // Must match calculateSpectrogram hopSize
     const samplingRateMsps = getSamplingRateMsps();
     const samplingRateSamplesPerMs = samplingRateMsps * 1e3;
     const timeSteps = 5;
     for (let i = 0; i <= timeSteps; i++) {
         const frameIdx = Math.floor(i * (numFrames - 1) / timeSteps);
-        const sampleOffset = frameIdx * hopSize;
+        const sampleOffset = frameIdx * spectrogramHopSize;
         const relativeTimeMs = sampleOffset / samplingRateSamplesPerMs;
         const absoluteTimeMs = startSampleMs + relativeTimeMs;
         const y = padding.top + (i / timeSteps) * graphHeight;
@@ -892,6 +895,10 @@ function hslToRgb(h, s, l) {
         Math.round(f(8) * 255),
         Math.round(f(4) * 255)
     ];
+}
+
+function handleSpectrogramOverlapChange() {
+    calculateSpectrogram();
 }
 
 function reprocessDataAndUpdateAll() {

@@ -189,8 +189,15 @@
 
                 <!-- Spectrogram Display Area -->
                 <div class="panel canvas-panel" style="flex: 1;">
-                    <div class="panel-header">
+                    <div class="panel-header" style="display: flex; justify-content: space-between; align-items: center;">
                         <h2>Spectrogram (Marker1-2 Range)</h2>
+                        <div style="display: flex; gap: 10px; align-items: center;">
+                            <label for="spectrogramOverlapSelector" style="font-weight: 600; font-size: 0.9em;">FFT Overlap:</label>
+                            <select id="spectrogramOverlapSelector" style="padding: 6px 10px; border: 1px solid var(--color-border); border-radius: 4px; background-color: var(--color-bg); color: var(--color-fg);">
+                                <option value="0">0%</option>
+                                <option value="50" selected>50%</option>
+                            </select>
+                        </div>
                     </div>
                     <div class="panel-body canvas-body">
                         <canvas id="spectrogramCanvas" width="600" height="400"></canvas>
