@@ -5,6 +5,7 @@ function generateVectorCW(frequencyMHz = 15, durationMs = 1000, samplingRateMsps
     const samplingRateHz = samplingRateMsps * 1e6;
     const frequencyHz = frequencyMHz * 1e6;
     const numSamples = Math.floor((durationMs / 1000) * samplingRateHz);
+    const amplitude = 0.1; // -20 dBFS: 20*log10(0.1) = -20 dB
 
     // Create Float32Array for I and Q interleaved (I, Q, I, Q, ...)
     const iqData = new Float32Array(numSamples * 2);
@@ -14,8 +15,8 @@ function generateVectorCW(frequencyMHz = 15, durationMs = 1000, samplingRateMsps
         const phase = 2 * Math.PI * frequencyHz * t;
 
         // I = cos(phase), Q = sin(phase)
-        iqData[n * 2] = Math.cos(phase);
-        iqData[n * 2 + 1] = Math.sin(phase);
+        iqData[n * 2] = amplitude * Math.cos(phase);
+        iqData[n * 2 + 1] = amplitude * Math.sin(phase);
     }
 
     return iqData;
@@ -31,6 +32,7 @@ function generateChirp(startFreqMHz = 0, sweepVelocityMHzPerMs = 0.05, durationM
     const startFreqHz = startFreqMHz * 1e6;
     const sweepVelocityHzPerSec = sweepVelocityMHzPerMs * 1e9; // Convert MHz/ms to Hz/s
     const numSamples = Math.floor((durationMs / 1000) * samplingRateHz);
+    const amplitude = 0.1; // -20 dBFS: 20*log10(0.1) = -20 dB
 
     // Create Float32Array for I and Q interleaved (I, Q, I, Q, ...)
     const iqData = new Float32Array(numSamples * 2);
@@ -43,8 +45,8 @@ function generateChirp(startFreqMHz = 0, sweepVelocityMHzPerMs = 0.05, durationM
         const phase = 2 * Math.PI * (startFreqHz * t + (sweepVelocityHzPerSec / 2) * t * t);
 
         // I = cos(phase), Q = sin(phase)
-        iqData[n * 2] = Math.cos(phase);
-        iqData[n * 2 + 1] = Math.sin(phase);
+        iqData[n * 2] = amplitude * Math.cos(phase);
+        iqData[n * 2 + 1] = amplitude * Math.sin(phase);
     }
 
     return iqData;
