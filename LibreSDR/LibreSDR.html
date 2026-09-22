@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+        <html>
+        <head>
+            <meta charset="UTF-8">
+            <title>LibreSDR&#x3068;&#x305d;&#x306e;&#x30d1;&#x30c1;&#x30e2;&#x30ce;HamGeek AD9363</title>
+            <style>
+/* From extension vscode.github */
+/*---------------------------------------------------------------------------------------------
+ *  Copyright (c) Microsoft Corporation. All rights reserved.
+ *  Licensed under the MIT License. See License.txt in the project root for license information.
+ *--------------------------------------------------------------------------------------------*/
+
+.vscode-dark img[src$=\#gh-light-mode-only],
+.vscode-light img[src$=\#gh-dark-mode-only],
+.vscode-high-contrast:not(.vscode-high-contrast-light) img[src$=\#gh-light-mode-only],
+.vscode-high-contrast-light img[src$=\#gh-dark-mode-only] {
+	display: none;
+}
+
+</style>
+            
+        <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/Microsoft/vscode/extensions/markdown-language-features/media/markdown.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/Microsoft/vscode/extensions/markdown-language-features/media/highlight.css">
+<style>
+            body {
+                font-family: -apple-system, BlinkMacSystemFont, 'Segoe WPC', 'Segoe UI', system-ui, 'Ubuntu', 'Droid Sans', sans-serif;
+                font-size: 14px;
+                line-height: 1.6;
+            }
+        </style>
+        <style>
+.task-list-item {
+    list-style-type: none;
+}
+
+.task-list-item-checkbox {
+    margin-left: -20px;
+    vertical-align: middle;
+    pointer-events: none;
+}
+</style>
+<style>
+:root {
+  --color-note: #0969da;
+  --color-tip: #1a7f37;
+  --color-warning: #9a6700;
+  --color-severe: #bc4c00;
+  --color-caution: #d1242f;
+  --color-important: #8250df;
+}
+
+</style>
+<style>
+@media (prefers-color-scheme: dark) {
+  :root {
+    --color-note: #2f81f7;
+    --color-tip: #3fb950;
+    --color-warning: #d29922;
+    --color-severe: #db6d28;
+    --color-caution: #f85149;
+    --color-important: #a371f7;
+  }
+}
+
+</style>
+<style>
+.markdown-alert {
+  padding: 0.5rem 1rem;
+  margin-bottom: 16px;
+  color: inherit;
+  border-left: .25em solid #888;
+}
+
+.markdown-alert>:first-child {
+  margin-top: 0
+}
+
+.markdown-alert>:last-child {
+  margin-bottom: 0
+}
+
+.markdown-alert .markdown-alert-title {
+  display: flex;
+  font-weight: 500;
+  align-items: center;
+  line-height: 1
+}
+
+.markdown-alert .markdown-alert-title .octicon {
+  margin-right: 0.5rem;
+  display: inline-block;
+  overflow: visible !important;
+  vertical-align: text-bottom;
+  fill: currentColor;
+}
+
+.markdown-alert.markdown-alert-note {
+  border-left-color: var(--color-note);
+}
+
+.markdown-alert.markdown-alert-note .markdown-alert-title {
+  color: var(--color-note);
+}
+
+.markdown-alert.markdown-alert-important {
+  border-left-color: var(--color-important);
+}
+
+.markdown-alert.markdown-alert-important .markdown-alert-title {
+  color: var(--color-important);
+}
+
+.markdown-alert.markdown-alert-warning {
+  border-left-color: var(--color-warning);
+}
+
+.markdown-alert.markdown-alert-warning .markdown-alert-title {
+  color: var(--color-warning);
+}
+
+.markdown-alert.markdown-alert-tip {
+  border-left-color: var(--color-tip);
+}
+
+.markdown-alert.markdown-alert-tip .markdown-alert-title {
+  color: var(--color-tip);
+}
+
+.markdown-alert.markdown-alert-caution {
+  border-left-color: var(--color-caution);
+}
+
+.markdown-alert.markdown-alert-caution .markdown-alert-title {
+  color: var(--color-caution);
+}
+
+</style>
+        
+        </head>
+        <body class="vscode-body vscode-light">
+            <span id="markdown-mermaid" aria-hidden="true" data-config="{&quot;darkModeTheme&quot;:&quot;vscode&quot;,&quot;lightModeTheme&quot;:&quot;vscode&quot;,&quot;maxTextSize&quot;:50000,&quot;clickDrag&quot;:&quot;alt&quot;,&quot;showControls&quot;:&quot;onHoverOrFocus&quot;,&quot;resizable&quot;:true,&quot;maxHeight&quot;:&quot;&quot;}"></span>
+				<h1 id="libresdrとそのパチモノhamgeek-ad9363">LibreSDRとそのパチモノHamGeek AD9363</h1>
+<p>HamGeek AD9363をアリエクで購入。board rev. 5.とのこと。</p>
+<h2 id="セットアップ">セットアップ</h2>
+<p>SDカードはついてこないので、32GBのカードにtezuka firmwareを焼く。<br>
+とりあえずv0.3.21のLibreSDR用を焼いたら動いた。</p>
+<p><a href="https://github.com/F5OEO/tezuka_fw">https://github.com/F5OEO/tezuka_fw</a></p>
+<p>DEBUG側のUSB-CをPCに接続すると、シリアルポートが4つ出現する。3番目(port C)がLinuxに入れる当たりポート。ボーレートは115200。
+何かの役に立ちそうなのでLinuxのブートログを置いておく。<a href="petalinux_bootlog.txt">petalinux_bootlog.txt</a></p>
+<p>root/analogでログインする。USB接続じゃなくてEther接続で使いたいのでIPアドレスを確認すると、usb0に192.168.2.1/24が割り当てられている。宅内LANとSubnetがかぶっているので使えない。</p>
+<p>usb0には192.168.3.2/24 を割り当てて回避。eth0はDHCPでアドレス拾えている。Static IPを割り当てるべきなんだろうかとりあえずこれでいく。</p>
+<pre><code class="language-bash"><span class="hljs-comment"># ip addr</span>
+1: lo: &lt;LOOPBACK,UP,LOWER_UP&gt; mtu 65536 qdisc noqueue state UNKNOWN group default qlen 1000
+    <span class="hljs-built_in">link</span>/loopback 00:00:00:00:00:00 brd 00:00:00:00:00:00
+    inet 127.0.0.1/8 scope host lo
+       valid_lft forever preferred_lft forever
+2: eth0: &lt;BROADCAST,MULTICAST,UP,LOWER_UP&gt; mtu 1500 qdisc fq state UP group default qlen 1000
+    <span class="hljs-built_in">link</span>/ether 00:60:88:ec:01:7b brd ff:ff:ff:ff:ff:ff permaddr 7e:60:15:36:94:e8
+    inet 192.168.2.131/24 brd 192.168.2.255 scope global eth0
+       valid_lft forever preferred_lft forever
+3: sit0@NONE: &lt;NOARP&gt; mtu 1480 qdisc noop state DOWN group default qlen 1000
+    <span class="hljs-built_in">link</span>/sit 0.0.0.0 brd 0.0.0.0
+4: usb0: &lt;NO-CARRIER,BROADCAST,MULTICAST,UP&gt; mtu 1500 qdisc pfifo_fast state DOWN group default qlen 1000
+    <span class="hljs-built_in">link</span>/ether 00:05:f7:0b:9a:75 brd ff:ff:ff:ff:ff:ff
+    inet 192.168.3.2/24 scope global usb0
+       valid_lft forever preferred_lft forever
+5: gse0: &lt;POINTOPOINT,MULTICAST,NOARP,UP,LOWER_UP&gt; mtu 1500 qdisc fq state UNKNOWN group default qlen 500
+    <span class="hljs-built_in">link</span>/none
+    inet 44.0.0.2/32 scope global gse0
+       valid_lft forever preferred_lft forever
+</code></pre>
+<p>これでWebブラウザから管理画面に入れるようになった。
+組み込みpetalinuxなので今やったIPアドレス設定は再起動で消えてしまうので、Web管理画面からPersistent設定のipaddrを設定する。この設定はSPI-Flashに書かれる模様。</p>
+<p><img src="file:///d:\proj\web\LibreSDR\2026-09-22%2012_32_05.png" alt="persistant settings"></p>
+
+            
+            
+        </body>
+        </html>
