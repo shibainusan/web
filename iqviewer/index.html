@@ -21,50 +21,52 @@
         </header>
 
         <div class="content">
-            <!-- File Selection Panel -->
-            <div class="panel file-panel">
-                <div class="panel-header">
-                    <h2>File Loading</h2>
-                </div>
-                <div class="panel-body" style="display: flex; gap: 20px; align-items: flex-start;">
-                    <div class="file-input-wrapper" style="flex: 1;">
-                        <input type="file" id="fileInput" accept=".bin" class="file-input">
-                        <label for="fileInput" class="file-label">Select file or drag &amp; drop</label>
+            <!-- File Loading and Info Row -->
+            <div style="display: flex; gap: 20px;">
+                <!-- File Selection Panel -->
+                <div class="panel file-panel" style="flex: 1;">
+                    <div class="panel-header">
+                        <h2>File Loading</h2>
                     </div>
-                    <div style="display: flex; gap: 20px; min-width: 400px;">
-                        <div>
-                            <label for="iqFormatSelector" style="display: block; font-weight: 600; font-size: 0.9em; margin-bottom: 8px;">IQ Format:</label>
-                            <select id="iqFormatSelector">
-                                <option value="float">Float IQ (32-bit IEEE 754)</option>
-                                <option value="int16">16-bit Integer IQ</option>
-                            </select>
+                    <div class="panel-body" style="display: flex; gap: 20px; align-items: flex-start;">
+                        <div class="file-input-wrapper" style="flex: 1;">
+                            <input type="file" id="fileInput" accept=".bin" class="file-input">
+                            <label for="fileInput" class="file-label">Select file or drag &amp; drop</label>
                         </div>
-                        <div>
-                            <label for="scaleSelector" style="display: block; font-weight: 600; font-size: 0.9em; margin-bottom: 8px;">IQ Scale:</label>
-                            <select id="scaleSelector">
-                                <option value="absolute">Absolute Voltage</option>
-                                <option value="adc16">16-bit ADC Code</option>
-                            </select>
-                        </div>
-                        <div>
-                            <label for="samplingRateSelector" style="display: block; font-weight: 600; font-size: 0.9em; margin-bottom: 8px;">Sampling Rate:</label>
-                            <select id="samplingRateSelector">
-                                <option value="30.72">30.72 Msps</option>
-                                <option value="61.44">61.44 Msps</option>
-                                <option value="122.88" selected>122.88 Msps</option>
-                                <option value="245.76">245.76 Msps</option>
-                            </select>
+                        <div style="display: flex; gap: 20px; min-width: 400px;">
+                            <div>
+                                <label for="iqFormatSelector" style="display: block; font-weight: 600; font-size: 0.9em; margin-bottom: 8px;">IQ Format:</label>
+                                <select id="iqFormatSelector">
+                                    <option value="float">Float IQ (32-bit IEEE 754)</option>
+                                    <option value="int16">16-bit Integer IQ</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label for="scaleSelector" style="display: block; font-weight: 600; font-size: 0.9em; margin-bottom: 8px;">IQ Scale:</label>
+                                <select id="scaleSelector">
+                                    <option value="absolute">Absolute Voltage</option>
+                                    <option value="adc16">16-bit ADC Code</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label for="samplingRateSelector" style="display: block; font-weight: 600; font-size: 0.9em; margin-bottom: 8px;">Sampling Rate:</label>
+                                <select id="samplingRateSelector">
+                                    <option value="30.72">30.72 Msps</option>
+                                    <option value="61.44">61.44 Msps</option>
+                                    <option value="122.88" selected>122.88 Msps</option>
+                                    <option value="245.76">245.76 Msps</option>
+                                </select>
+                            </div>
                         </div>
                     </div>
                 </div>
-            </div>
 
-            <!-- File Info Panel -->
-            <div class="panel info-panel">
-                <div class="panel-header">
-                    <h2>File Information</h2>
-                </div>
-                <div class="panel-body">
+                <!-- File Info Panel -->
+                <div class="panel info-panel" style="flex: 1;">
+                    <div class="panel-header">
+                        <h2>File Information</h2>
+                    </div>
+                    <div class="panel-body">
                     <div class="info-row">
                         <label>File Name:</label>
                         <span id="fileName">-</span>
@@ -92,6 +94,7 @@
                     <div class="info-row">
                         <label>Bottom dB:</label>
                         <span id="bottomDb">-</span>
+                    </div>
                     </div>
                 </div>
             </div>
@@ -165,30 +168,69 @@
             <!-- Canvas Display Area -->
             <div class="panel canvas-panel">
                 <div class="panel-header">
-                    <h2>Waveform Display</h2>
+                    <h2>Timedomain Waveform</h2>
                 </div>
                 <div class="panel-body canvas-body">
                     <canvas id="waveformCanvas" width="1200" height="400"></canvas>
                 </div>
             </div>
 
-            <!-- FFT Display Area -->
-            <div class="panel canvas-panel">
-                <div class="panel-header">
-                    <h2>FFT Result (1024-point from Marker1)</h2>
+            <!-- FFT and Spectrogram Row -->
+            <div style="display: flex; gap: 20px;">
+                <!-- FFT Display Area -->
+                <div class="panel canvas-panel" style="flex: 1;">
+                    <div class="panel-header">
+                        <h2>FFT Result (1024-point from Marker1)</h2>
+                    </div>
+                    <div class="panel-body canvas-body">
+                        <canvas id="fftCanvas" width="600" height="400"></canvas>
+                    </div>
                 </div>
-                <div class="panel-body canvas-body">
-                    <canvas id="fftCanvas" width="1200" height="400"></canvas>
+
+                <!-- Spectrogram Display Area -->
+                <div class="panel canvas-panel" style="flex: 1;">
+                    <div class="panel-header">
+                        <h2>Spectrogram (Marker1-2 Range)</h2>
+                    </div>
+                    <div class="panel-body canvas-body">
+                        <canvas id="spectrogramCanvas" width="600" height="400"></canvas>
+                    </div>
                 </div>
             </div>
 
-            <!-- Spectrogram Display Area -->
-            <div class="panel canvas-panel">
+            <!-- Test Control Panel -->
+            <div class="panel" style="margin-top: 20px;">
                 <div class="panel-header">
-                    <h2>Spectrogram (Marker1-2 Range)</h2>
+                    <h2>Test Waveform</h2>
                 </div>
-                <div class="panel-body canvas-body">
-                    <canvas id="spectrogramCanvas" width="1200" height="300"></canvas>
+                <div class="panel-body">
+                    <div style="display: flex; gap: 15px; align-items: center; flex-wrap: wrap;">
+                        <div>
+                            <label for="testWaveformType" style="font-weight: 600; font-size: 0.9em;">Waveform Type:</label>
+                            <select id="testWaveformType" style="width: 120px; padding: 8px; border: 1px solid var(--color-border); border-radius: 4px; background-color: var(--color-bg); color: var(--color-fg);">
+                                <option value="cw">Vector CW</option>
+                                <option value="chirp">Chirp (Sweep)</option>
+                            </select>
+                        </div>
+                        <div id="cwParamsDiv">
+                            <label for="testFreqInput" style="font-weight: 600; font-size: 0.9em;">Frequency (MHz):</label>
+                            <input type="number" id="testFreqInput" value="15" step="5" min="-100" max="100" style="width: 100px; padding: 8px; border: 1px solid var(--color-border); border-radius: 4px; background-color: var(--color-bg); color: var(--color-fg);">
+                        </div>
+                        <div id="chirpParamsDiv" style="display: none;">
+                            <label for="testChirpVelocity" style="font-weight: 600; font-size: 0.9em;">Sweep Velocity (MHz/ms):</label>
+                            <input type="number" id="testChirpVelocity" value="0.05" step="0.01" min="0.01" max="1" style="width: 100px; padding: 8px; border: 1px solid var(--color-border); border-radius: 4px; background-color: var(--color-bg); color: var(--color-fg);">
+                        </div>
+                        <div>
+                            <label for="testDurationInput" style="font-weight: 600; font-size: 0.9em;">Duration (ms):</label>
+                            <input type="number" id="testDurationInput" value="10" step="10" min="1" max="1000" style="width: 100px; padding: 8px; border: 1px solid var(--color-border); border-radius: 4px; background-color: var(--color-bg); color: var(--color-fg);">
+                        </div>
+                        <button id="generateTestDataBtn" class="btn btn-primary" style="margin-top: 20px;">Generate Test Data</button>
+                        <button id="runTestBtn" class="btn btn-secondary" style="margin-top: 20px;">Run Test</button>
+                    </div>
+                    <div id="testResults" style="margin-top: 15px; padding: 10px; border: 1px solid var(--color-border); border-radius: 4px; background-color: rgba(0,0,0,0.02); display: none;">
+                        <h3 style="margin-top: 0;">Test Results</h3>
+                        <div id="testResultsContent" style="font-family: 'Courier New', monospace; font-size: 0.9em; white-space: pre-wrap;"></div>
+                    </div>
                 </div>
             </div>
 
@@ -211,6 +253,8 @@
     <script src="js/utils.js"></script>
     <script src="js/iqdata.js"></script>
     <script src="js/renderer.js"></script>
+    <script src="js/test-vcw-generator.js"></script>
+    <script src="js/test-validators.js"></script>
     <script src="js/app.js"></script>
 </body>
 </html>

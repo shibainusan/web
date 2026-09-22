@@ -81,6 +81,7 @@ function setupEventListeners() {
 
     elements.scaleSelector.addEventListener('change', handleScaleChange);
     elements.samplingRateSelector.addEventListener('change', handleSamplingRateChange);
+    elements.iqFormatSelector.addEventListener('change', handleIQFormatChange);
     elements.amplitudeUnit.addEventListener('change', handleAmplitudeUnitChange);
     elements.startTime.addEventListener('change', debounce(handleTimeRangeChange, 300));
     elements.endTime.addEventListener('change', debounce(handleTimeRangeChange, 300));
@@ -96,6 +97,11 @@ function setupEventListeners() {
     elements.setMarker2Button.addEventListener('click', () => startMarkerMode('marker2'));
     elements.clearMarkersButton.addEventListener('click', clearMarkers);
     elements.canvas.addEventListener('click', handleCanvasClick);
+
+    // Test Control listeners
+    document.getElementById('testWaveformType').addEventListener('change', handleWaveformTypeChange);
+    document.getElementById('generateTestDataBtn').addEventListener('click', generateTestData);
+    document.getElementById('runTestBtn').addEventListener('click', runVectorCWTest);
 
     window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => {
         renderer.isDarkMode = renderer.checkDarkMode();
@@ -137,11 +143,11 @@ async function loadFile(file) {
         showProgress();
 
         const arrayBuffer = await file.arrayBuffer();
-        const iqFormat = elements.iqFormatSelector.value;
-        const scale = elements.scaleSelector.value;
+        const loadiqFormat = elements.iqFormatSelector.value;
+        const loadscale = elements.scaleSelector.value;
 
         setStatus('Processing data...');
-        const metadata = await iqData.loadFromArrayBuffer(arrayBuffer, file.name, iqFormat, scale);
+        const metadata = await iqData.loadFromArrayBuffer(arrayBuffer, file.name, loadiqFormat, loadscale);
 
         elements.startIndex.max = metadata.sampleCount - 1;
         elements.endIndex.max = metadata.sampleCount - 1;
@@ -160,8 +166,24 @@ async function loadFile(file) {
         updateUI();
         updateWaveform();
 
+        // Set default markers and calculate FFT/Spectrogram
+        const totalTimeMs = sampleToMs(metadata.sampleCount - 1);
+        marker1Time = 0;
+        marker1Amplitude = iqData.amplitudes[0];
+        marker2Time = totalTimeMs;
+        marker2Amplitude = iqData.amplitudes[iqData.sampleCount - 1];
+
+        // Update marker display
+        elements.marker1Value.textContent = `${marker1Time.toFixed(3)} ms (${iqData.convertAmplitudeToDb(marker1Amplitude).toFixed(2)} dB)`;
+        elements.marker2Value.textContent = `${marker2Time.toFixed(3)} ms (${iqData.convertAmplitudeToDb(marker2Amplitude).toFixed(2)} dB)`;
+
+        // Update burst length and calculate FFT/Spectrogram
+        updateBurstLength();
+        calculateFFT();
+        calculateSpectrogram();
+
         elements.scaleSelector.disabled = false;
-        setStatus(`File loaded: ${file.name}`);
+        setStatus(`File loaded: ${file.name} - Markers set (0 to ${totalTimeMs.toFixed(3)}ms) - FFT & Spectrogram calculated`);
     } catch (error) {
         setStatus(`Error: ${error.message}`);
         console.error('File loading error:', error);
@@ -709,10 +731,10 @@ function calculateSpectrogram() {
         }
     }
 
-    drawSpectrogram(spectrogram, samplingRateHz);
+    drawSpectrogram(spectrogram, samplingRateHz, startSample);
 }
 
-function drawSpectrogram(spectrogram, samplingRateHz) {
+function drawSpectrogram(spectrogram, samplingRateHz, startSample = 0) {
     const ctx = elements.spectrogramCanvas.getContext('2d');
     const width = elements.spectrogramCanvas.width;
     const height = elements.spectrogramCanvas.height;
@@ -731,6 +753,7 @@ function drawSpectrogram(spectrogram, samplingRateHz) {
     const graphHeight = height - padding.top - padding.bottom;
     const numFrames = spectrogram.length;
     const fftSize = spectrogram[0].length;
+    const startSampleMs = sampleToMs(startSample);
 
     // Find min/max magnitude across all frames
     let minMag = 0, maxMag = -100;
@@ -819,16 +842,17 @@ function drawSpectrogram(spectrogram, samplingRateHz) {
     // Draw time axis labels
     ctx.textAlign = 'right';
     ctx.textBaseline = 'middle';
-    const hopSize = 512;
+    const hopSize = 1024; // Must match calculateSpectrogram hopSize
     const samplingRateMsps = getSamplingRateMsps();
     const samplingRateSamplesPerMs = samplingRateMsps * 1e3;
     const timeSteps = 5;
     for (let i = 0; i <= timeSteps; i++) {
         const frameIdx = Math.floor(i * (numFrames - 1) / timeSteps);
         const sampleOffset = frameIdx * hopSize;
-        const timeMs = sampleOffset / samplingRateSamplesPerMs;
+        const relativeTimeMs = sampleOffset / samplingRateSamplesPerMs;
+        const absoluteTimeMs = startSampleMs + relativeTimeMs;
         const y = padding.top + (i / timeSteps) * graphHeight;
-        ctx.fillText(timeMs.toFixed(3) + ' ms', padding.left - 10, y);
+        ctx.fillText(absoluteTimeMs.toFixed(3) + ' ms', padding.left - 10, y);
     }
 
     // Draw labels
@@ -870,29 +894,76 @@ function hslToRgb(h, s, l) {
     ];
 }
 
-function handleScaleChange(event) {
+function reprocessDataAndUpdateAll() {
     if (iqData.sampleCount === 0) {
         return;
     }
 
-    const newScale = event.target.value;
-    setStatus('Reprocessing data with new scale...');
+    setStatus('Reprocessing data and updating all views...');
     showProgress();
 
     setTimeout(() => {
-        iqData.reprocessWithScale(newScale);
+        // 1. Reprocess with current scale and format
+        const reprocessscale = elements.scaleSelector.value;
+        iqData.reprocessWithScale(reprocessscale);
+
+        // 2. Update UI
         updateUI();
+
+        // 3. Update waveform
         updateWaveform();
-        setStatus(`Scale changed to: ${newScale}`);
+
+        // 4. Recalculate FFT
+        calculateFFT();
+
+        // 5. Recalculate Spectrogram
+        calculateSpectrogram();
+
+        setStatus('Data reprocessed - All views updated (Waveform, FFT, Spectrogram)');
         hideProgress();
     }, 0);
+}
+
+function handleScaleChange(event) {
+    reprocessDataAndUpdateAll();
 }
 
 function handleSamplingRateChange(event) {
     const newRate = event.target.value;
     updateTimeRange();
     updateTimeSliders();
-    setStatus(`Sampling rate changed to: ${newRate} Msps`);
+    reprocessDataAndUpdateAll();
+}
+
+function handleIQFormatChange(event) {
+    if (iqData.sampleCount === 0) {
+        return;
+    }
+
+    const newFormat = event.target.value;
+    if (!iqData.rawArrayBuffer) {
+        setStatus('Error: No raw data to reformat');
+        return;
+    }
+
+    setStatus(`Reformatting data to ${newFormat} format and updating all views...`);
+    showProgress();
+
+    setTimeout(() => {
+        // Reload with new format
+        const formatscale = elements.scaleSelector.value;
+        const fileName = iqData.fileName;
+        iqData.loadFromArrayBuffer(iqData.rawArrayBuffer, fileName, newFormat, formatscale);
+
+        // Update all views
+        updateUI();
+        updateWaveform();
+        calculateFFT();
+        calculateSpectrogram();
+
+        setStatus(`Data reformatted to ${newFormat} - All views updated (Waveform, FFT, Spectrogram)`);
+        hideProgress();
+    }, 0);
 }
 
 function handleStartTimeSliderChange(event) {
@@ -973,6 +1044,219 @@ function debounce(func, delay) {
         clearTimeout(timeoutId);
         timeoutId = setTimeout(() => func(...args), delay);
     };
+}
+
+// Test functions
+function handleWaveformTypeChange() {
+    const waveformType = document.getElementById('testWaveformType').value;
+    const cwParamsDiv = document.getElementById('cwParamsDiv');
+    const chirpParamsDiv = document.getElementById('chirpParamsDiv');  //TEST
+
+    if (waveformType === 'cw') {
+        cwParamsDiv.style.display = 'block';
+        chirpParamsDiv.style.display = 'none';
+    } else if (waveformType === 'chirp') {
+        cwParamsDiv.style.display = 'none';
+        chirpParamsDiv.style.display = 'block';
+    }
+}
+
+function generateTestData() {
+    try {
+        const waveformType = document.getElementById('testWaveformType').value;
+        const durationMs = parseFloat(document.getElementById('testDurationInput').value) || 1000;
+        const samplingRateMsps = getSamplingRateMsps();
+
+        let arrayBuffer;
+        let dataFileName;
+        let statusMsg;
+
+        if (waveformType === 'cw') {
+            const frequencyMHz = parseFloat(document.getElementById('testFreqInput').value) || 15;
+            statusMsg = `Generating Vector CW ${frequencyMHz>0?'+':''}${frequencyMHz}MHz (${durationMs}ms, ${samplingRateMsps}Msps)...`;
+            setStatus(statusMsg);
+            arrayBuffer = generateVectorCWArrayBuffer(frequencyMHz, durationMs, samplingRateMsps);
+            dataFileName = `Vector_CW_${frequencyMHz}MHz_${durationMs}ms.bin`;
+        } else if (waveformType === 'chirp') {
+            const sweepVelocityMHzPerMs = parseFloat(document.getElementById('testChirpVelocity').value) || 0.05;
+            const startFreqMHz = 0;
+            const endFreqMHz = startFreqMHz + sweepVelocityMHzPerMs * durationMs;
+            statusMsg = `Generating Chirp sweep 0→${endFreqMHz.toFixed(1)}MHz (${sweepVelocityMHzPerMs}MHz/ms, ${durationMs}ms, ${samplingRateMsps}Msps)...`;
+            setStatus(statusMsg);
+            arrayBuffer = generateChirpArrayBuffer(startFreqMHz, sweepVelocityMHzPerMs, durationMs, samplingRateMsps);
+            dataFileName = `Chirp_${sweepVelocityMHzPerMs}MHzPerMs_${durationMs}ms.bin`;
+        } else {
+            setStatus('Invalid waveform type');
+            return;
+        }
+
+        // Generate test data
+        let testiqFormat = elements.iqFormatSelector.value;
+        let testscale = elements.scaleSelector.value;
+
+        // Load test data
+        iqData.loadFromArrayBuffer(arrayBuffer, dataFileName, testiqFormat, testscale);
+
+        updateUI();
+
+        // Update Display Range sliders
+        updateTimeRange();
+        updateTimeSliders();
+        elements.startTimeSlider.value = 0;
+        elements.endTimeSlider.value = sampleToMs(iqData.sampleCount - 1);
+        elements.startTimeValue.textContent = '0.000';
+        elements.endTimeValue.textContent = sampleToMs(iqData.sampleCount - 1).toFixed(3);
+        elements.zoomSlider.value = 100;
+        elements.zoomValue.textContent = '100';
+
+        updateWaveform();
+
+        // Set default markers (same as file load)
+        const totalTimeMs = sampleToMs(iqData.sampleCount - 1);
+        marker1Time = 0;
+        marker1Amplitude = iqData.amplitudes[0];
+        marker2Time = totalTimeMs;
+        marker2Amplitude = iqData.amplitudes[iqData.sampleCount - 1];
+
+        // Update marker display
+        elements.marker1Value.textContent = `${marker1Time.toFixed(3)} ms (${iqData.convertAmplitudeToDb(marker1Amplitude).toFixed(2)} dB)`;
+        elements.marker2Value.textContent = `${marker2Time.toFixed(3)} ms (${iqData.convertAmplitudeToDb(marker2Amplitude).toFixed(2)} dB)`;
+
+        // Calculate FFT and Spectrogram
+        updateBurstLength();
+        calculateFFT();
+        calculateSpectrogram();
+
+        setStatus(`Test data loaded: ${dataFileName}, ${iqData.sampleCount} samples - Markers set, FFT & Spectrogram calculated`);
+        document.getElementById('testResults').style.display = 'none';
+    } catch (error) {
+        setStatus(`Error generating test data: ${error.message}`);
+        console.error('Test data generation error:', error);
+    }
+}
+
+function runVectorCWTest() {
+    try {
+        if (iqData.sampleCount === 0) {
+            setStatus('No data loaded. Please generate test data first.');
+            return;
+        }
+
+        setStatus('Running Vector CW Test...');
+        const frequencyMHz = parseFloat(document.getElementById('testFreqInput').value) || 15;
+        const samplingRateMsps = getSamplingRateMsps();
+
+        // Prepare results
+        let resultsText = '';
+        let allPassed = true;
+
+        // 1. Validate Waveform
+        setStatus('Running Vector CW Test - Validating waveform...');
+        const waveformResult = validateWaveformData(iqData.iValues, iqData.qValues, frequencyMHz);
+        resultsText += `Waveform Data Validation:\n`;
+        resultsText += `  Status: ${waveformResult.passed ? 'PASSED' : 'FAILED'}\n`;
+        resultsText += `  IQ Amplitude: ${waveformResult.iqAmplitude.toFixed(4)}\n`;
+        resultsText += `  I RMS: ${waveformResult.iRMS.toFixed(4)}, Q RMS: ${waveformResult.qRMS.toFixed(4)}\n`;
+        resultsText += `  Data Valid: ${waveformResult.dataValid}\n\n`;
+        allPassed = allPassed && waveformResult.passed;
+
+        // 2. Validate FFT Peak
+        setStatus('Running Vector CW Test - Validating FFT...');
+        const fftResult = validateFFTPeak(iqData.iValues, iqData.qValues, frequencyMHz, 0.5, samplingRateMsps);
+        resultsText += `FFT Peak Validation:\n`;
+        resultsText += `  Status: ${fftResult.passed ? 'PASSED' : 'FAILED'}\n`;
+        resultsText += `  Expected: ${fftResult.expectedFreqMHz.toFixed(2)} MHz\n`;
+        resultsText += `  Detected: ${fftResult.detectedPeakMHz.toFixed(2)} MHz\n`;
+        resultsText += `  Difference: ${fftResult.freqDiffMHz.toFixed(3)} MHz\n`;
+        resultsText += `  Tolerance: ±${fftResult.toleranceMHz.toFixed(2)} MHz\n`;
+        resultsText += `  Peak Magnitude: ${fftResult.peakMagnitudeDb.toFixed(2)} dB\n\n`;
+        allPassed = allPassed && fftResult.passed;
+
+        // 3. Validate Spectrogram (if markers are set)
+        if (marker1Time !== null && marker2Time !== null) {
+            setStatus('Running Vector CW Test - Validating spectrogram...');
+
+            // Calculate spectrogram for markers
+            const startSample = msToSample(Math.min(marker1Time, marker2Time));
+            const endSample = msToSample(Math.max(marker1Time, marker2Time));
+            const hopSize = 1024;
+            const fftSize = 1024;
+            const duration = endSample - startSample;
+            const numFrames = Math.floor((duration - fftSize) / hopSize) + 1;
+
+            if (numFrames > 0) {
+                const spectrogram = new Array(numFrames);
+                for (let frame = 0; frame < numFrames; frame++) {
+                    spectrogram[frame] = new Float32Array(fftSize);
+                }
+
+                // Calculate FFT for each frame
+                for (let frame = 0; frame < numFrames; frame++) {
+                    const frameStartSample = startSample + frame * hopSize;
+                    const fftInput = [];
+
+                    for (let i = 0; i < fftSize; i++) {
+                        const idx = frameStartSample + i;
+                        const window = 0.54 - 0.46 * Math.cos(2 * Math.PI * i / (fftSize - 1));
+                        if (idx < iqData.sampleCount) {
+                            fftInput.push(iqData.iValues[idx] * window);
+                            fftInput.push(iqData.qValues[idx] * window);
+                        }
+                    }
+
+                    const fft = new FFT(fftSize);
+                    const output = fft.createComplexArray();
+                    for (let i = 0; i < fftInput.length; i++) {
+                        output[i] = fftInput[i];
+                    }
+                    fft.transform(output, fftInput);
+
+                    let windowSum = 0;
+                    for (let i = 0; i < fftSize; i++) {
+                        const window = 0.54 - 0.46 * Math.cos(2 * Math.PI * i / (fftSize - 1));
+                        windowSum += window;
+                    }
+                    const normalization = 2 / (fftSize * windowSum / fftSize);
+
+                    for (let i = 0; i < fftSize; i++) {
+                        const real = output[2 * i];
+                        const imag = output[2 * i + 1];
+                        const mag = Math.sqrt(real * real + imag * imag) * normalization;
+                        spectrogram[frame][i] = 20 * Math.log10(mag + 1e-10);
+                    }
+                }
+
+                const spectroResult = validateSpectrogramEnergy(spectrogram, frequencyMHz, 0.5, samplingRateMsps);
+                resultsText += `Spectrogram Energy Validation:\n`;
+                resultsText += `  Status: ${spectroResult.passed ? 'PASSED' : 'FAILED'}\n`;
+                resultsText += `  Expected: ${spectroResult.expectedFreqMHz.toFixed(2)} MHz\n`;
+                resultsText += `  Max Energy Freq: ${spectroResult.maxEnergyFreq.toFixed(2)} MHz\n`;
+                resultsText += `  Difference: ${spectroResult.freqDiffMHz.toFixed(3)} MHz\n`;
+                resultsText += `  Max Energy: ${spectroResult.maxEnergy.toFixed(2)}\n\n`;
+                allPassed = allPassed && spectroResult.passed;
+            } else {
+                resultsText += `Spectrogram Energy Validation:\n  Status: SKIPPED (insufficient marker range)\n\n`;
+            }
+        } else {
+            resultsText += `Spectrogram Energy Validation:\n  Status: SKIPPED (set Marker 1 and 2 to enable)\n\n`;
+        }
+
+        // Final result
+        resultsText += `=====================================\n`;
+        resultsText += `OVERALL RESULT: ${allPassed ? 'ALL TESTS PASSED ✓' : 'SOME TESTS FAILED ✗'}\n`;
+        resultsText += `=====================================`;
+
+        // Display results
+        const resultsDiv = document.getElementById('testResults');
+        const resultsContent = document.getElementById('testResultsContent');
+        resultsContent.textContent = resultsText;
+        resultsDiv.style.display = 'block';
+
+        setStatus(`Vector CW Test completed: ${allPassed ? 'PASSED' : 'FAILED'}`);
+    } catch (error) {
+        setStatus(`Test error: ${error.message}`);
+        console.error('Test error:', error);
+    }
 }
 
 document.addEventListener('DOMContentLoaded', init);
