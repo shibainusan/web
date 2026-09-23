@@ -631,7 +631,10 @@ function drawSpectrogram(spectrogram, samplingRateHz, startSample = 0) {
     const ctx = elements.spectrogramCanvas.getContext('2d');
     const width = elements.spectrogramCanvas.width;
     const height = elements.spectrogramCanvas.height;
-    const padding = { left: 60, right: 20, top: 40, bottom: 50 };
+    const colorbarWidth = 18;
+    const colorbarGraphGap = 12; // space between heatmap and colorbar
+    const colorbarLabelSpace = 40; // space for tick numbers + "dBFS" title
+    const padding = { left: 60, right: colorbarGraphGap + colorbarWidth + colorbarLabelSpace, top: 40, bottom: 50 };
 
     // Check dark mode
     const isDarkMode = window.matchMedia('(prefers-color-scheme: dark)').matches;
@@ -648,12 +651,12 @@ function drawSpectrogram(spectrogram, samplingRateHz, startSample = 0) {
     const fftSize = spectrogram[0].length;
     const startSampleMs = sampleToMs(startSample);
 
-    // Find min/max magnitude across all frames
-    let minMag = 0, maxMag = -100;
+    // Find min magnitude across all frames; max is fixed at 0 dBFS (full scale)
+    let minMag = 0;
+    const maxMag = 0;
     for (let frame = 0; frame < numFrames; frame++) {
         for (let bin = 0; bin < fftSize; bin++) {
             minMag = Math.min(minMag, spectrogram[frame][bin]);
-            maxMag = Math.max(maxMag, spectrogram[frame][bin]);
         }
     }
 
@@ -693,9 +696,7 @@ function drawSpectrogram(spectrogram, samplingRateHz, startSample = 0) {
             const mag = spectrogram[clampedFrameIdx][binIdx];
             const normalized = (mag - minMag) / (maxMag - minMag || 1);
 
-            // Colormap: black->blue->cyan->green->yellow->red
-            const hue = normalized * 270;
-            const [r, g, b] = hslToRgb((360 - hue) % 360, 100, 50 * normalized);
+            const [r, g, b] = spectrogramColor(normalized);
 
             const pixelIdx = (y * graphWidth + x) * 4;
             data[pixelIdx] = r;
@@ -758,6 +759,47 @@ function drawSpectrogram(spectrogram, samplingRateHz, startSample = 0) {
     ctx.rotate(-Math.PI / 2);
     ctx.fillText('Time (ms)', 0, 0);
     ctx.restore();
+
+    // Draw color scale (dBFS legend)
+    const colorbarX = width - padding.right + colorbarGraphGap;
+    const colorbarImage = ctx.createImageData(colorbarWidth, graphHeight);
+    const colorbarData = colorbarImage.data;
+    for (let y = 0; y < graphHeight; y++) {
+        const normalized = 1 - y / (graphHeight - 1 || 1); // top = max, bottom = min
+        const [r, g, b] = spectrogramColor(normalized);
+        for (let x = 0; x < colorbarWidth; x++) {
+            const idx = (y * colorbarWidth + x) * 4;
+            colorbarData[idx] = r;
+            colorbarData[idx + 1] = g;
+            colorbarData[idx + 2] = b;
+            colorbarData[idx + 3] = 255;
+        }
+    }
+    ctx.putImageData(colorbarImage, colorbarX, padding.top);
+
+    ctx.strokeStyle = fgColor;
+    ctx.lineWidth = 1;
+    ctx.strokeRect(colorbarX, padding.top, colorbarWidth, graphHeight);
+
+    ctx.fillStyle = fgColor;
+    ctx.font = '11px Arial';
+    ctx.textAlign = 'left';
+    const colorbarSteps = 5;
+    for (let i = 0; i <= colorbarSteps; i++) {
+        const norm = i / colorbarSteps;
+        const dbValue = minMag + norm * (maxMag - minMag);
+        const y = padding.top + graphHeight - norm * graphHeight;
+        ctx.textBaseline = i === 0 ? 'bottom' : (i === colorbarSteps ? 'top' : 'middle');
+        ctx.fillText(dbValue.toFixed(0), colorbarX + colorbarWidth + 4, y);
+    }
+
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'top';
+    ctx.save();
+    ctx.translate(width - 12, padding.top + graphHeight / 2);
+    ctx.rotate(-Math.PI / 2);
+    ctx.fillText('dBFS', 0, 0);
+    ctx.restore();
 }
 
 function clearSpectrogram() {
@@ -771,20 +813,20 @@ function clearSpectrogram() {
 }
 
 // HSL to RGB conversion utility
-function hslToRgb(h, s, l) {
-    s /= 100;
-    l /= 100;
-    const a = s * Math.min(l, 1 - l);
-    const f = n => {
-        const k = (n + h / 30) % 12;
-        return l - a * Math.max(-1, Math.min(k - 3, 9 - k, 1));
-    };
-    return [
-        Math.round(f(0) * 255),
-        Math.round(f(8) * 255),
-        Math.round(f(4) * 255)
-    ];
+// Colormap: black->blue->cyan->green->yellow->red
+// Jet colormap: dark blue -> blue -> cyan -> green -> yellow -> red (0=darkest blue, 1=red)
+function spectrogramColor(normalized) {
+    const t = Math.max(0, Math.min(1, normalized));
+    const r = Math.round(255 * clamp01(1.5 - Math.abs(4 * t - 3)));
+    const g = Math.round(255 * clamp01(1.5 - Math.abs(4 * t - 2)));
+    const b = Math.round(255 * clamp01(1.5 - Math.abs(4 * t - 1)));
+    return [r, g, b];
 }
+
+function clamp01(x) {
+    return Math.max(0, Math.min(1, x));
+}
+
 
 function handleSpectrogramOverlapChange() {
     calculateSpectrogram();
