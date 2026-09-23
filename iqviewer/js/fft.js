@@ -2,15 +2,28 @@
 class FFT {
     constructor(size) {
         this.size = size;
+        this.numStages = Math.log2(size);
         this.bit_reverse = this.makeBitReverse(size);
+        // Precompute the N/2 twiddle factors once; every stage indexes into
+        // this same table with a stage-dependent stride instead of
+        // recomputing sin/cos or iteratively rotating a complex number
+        // on every transform() call.
+        const half = size >> 1;
+        this.cosTable = new Float64Array(half);
+        this.sinTable = new Float64Array(half);
+        for (let k = 0; k < half; k++) {
+            const angle = -2 * Math.PI * k / size;
+            this.cosTable[k] = Math.cos(angle);
+            this.sinTable[k] = Math.sin(angle);
+        }
     }
 
     makeBitReverse(size) {
-        const result = new Array(size);
+        const result = new Int32Array(size);
+        const bits = Math.log2(size);
         for (let i = 0; i < size; i++) {
             let reversed = 0;
             let n = i;
-            let bits = Math.log2(size);
             for (let j = 0; j < bits; j++) {
                 reversed = (reversed << 1) | (n & 1);
                 n >>= 1;
@@ -23,10 +36,11 @@ class FFT {
     // In-place FFT of interleaved complex data [re0, im0, re1, im1, ...]
     transform(output) {
         const N = this.size;
+        const bitReverse = this.bit_reverse;
 
         // Bit reversal
         for (let i = 0; i < N; i++) {
-            const rev = this.bit_reverse[i];
+            const rev = bitReverse[i];
             if (i < rev) {
                 // Swap
                 const temp_real = output[2 * i];
@@ -38,20 +52,23 @@ class FFT {
             }
         }
 
+        const cosTable = this.cosTable;
+        const sinTable = this.sinTable;
+
         // FFT computation
-        for (let s = 1; s <= Math.log2(N); s++) {
+        for (let s = 1; s <= this.numStages; s++) {
             const m = 1 << s;
             const m2 = m >> 1;
-            const w_real = Math.cos(-2 * Math.PI / m);
-            const w_imag = Math.sin(-2 * Math.PI / m);
+            const stride = N / m;
 
             for (let k = 0; k < N; k += m) {
-                let wm_real = 1;
-                let wm_imag = 0;
-
+                let twIdx = 0;
                 for (let j = 0; j < m2; j++) {
                     const t_idx = 2 * (k + j + m2);
                     const u_idx = 2 * (k + j);
+
+                    const wm_real = cosTable[twIdx];
+                    const wm_imag = sinTable[twIdx];
 
                     // t = wm * output[k + j + m2]
                     const t_real = wm_real * output[t_idx] - wm_imag * output[t_idx + 1];
@@ -65,10 +82,7 @@ class FFT {
                     output[u_idx] += t_real;
                     output[u_idx + 1] += t_imag;
 
-                    // wm = wm * w
-                    const temp_real = wm_real * w_real - wm_imag * w_imag;
-                    wm_imag = wm_real * w_imag + wm_imag * w_real;
-                    wm_real = temp_real;
+                    twIdx += stride;
                 }
             }
         }
