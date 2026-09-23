@@ -664,45 +664,57 @@ function drawSpectrogram(spectrogram, samplingRateHz, startSample = 0) {
     const imageData = ctx.createImageData(graphWidth, graphHeight);
     const data = imageData.data;
 
-    // Initialize all pixels to white
-    for (let i = 0; i < data.length; i += 4) {
-        data[i] = 255;     // R
-        data[i + 1] = 255; // G
-        data[i + 2] = 255; // B
-        data[i + 3] = 255; // A
+    // Precompute a color lookup table so the colormap isn't recomputed per pixel
+    const lutSize = 256;
+    const colorLut = new Uint8ClampedArray(lutSize * 3);
+    for (let i = 0; i < lutSize; i++) {
+        const [r, g, b] = spectrogramColor(i / (lutSize - 1));
+        colorLut[i * 3] = r;
+        colorLut[i * 3 + 1] = g;
+        colorLut[i * 3 + 2] = b;
     }
+
+    // Precompute the bin index for each x pixel (independent of y/frame)
+    const binIdxForX = new Int32Array(graphWidth);
+    for (let x = 0; x < graphWidth; x++) {
+        const binIdxNorm = x / graphWidth;
+        const displayBinIdx = Math.round(binIdxNorm * fftSize);
+
+        let binIdx;
+        if (displayBinIdx < fftSize / 2) {
+            binIdx = displayBinIdx - fftSize / 2;
+            if (binIdx < 0) binIdx += fftSize;
+        } else {
+            binIdx = displayBinIdx - fftSize / 2;
+        }
+
+        binIdxForX[x] = Math.max(0, Math.min(binIdx, fftSize - 1));
+    }
+
+    const invRange = 1 / ((maxMag - minMag) || 1);
 
     // For each pixel position, find and draw the appropriate value
     for (let y = 0; y < graphHeight; y++) {
         // Map y pixel to frame index
         const frameIdx = Math.round((y / graphHeight) * (numFrames - 1));
         const clampedFrameIdx = Math.max(0, Math.min(frameIdx, numFrames - 1));
+        const frameSpectrum = spectrogram[clampedFrameIdx];
+        let pixelIdx = y * graphWidth * 4;
 
         for (let x = 0; x < graphWidth; x++) {
-            // Map x pixel to bin index
-            const binIdxNorm = x / graphWidth;
-            const displayBinIdx = Math.round(binIdxNorm * fftSize);
+            const mag = frameSpectrum[binIdxForX[x]];
+            let normalized = (mag - minMag) * invRange;
+            if (normalized < 0) normalized = 0;
+            else if (normalized > 1) normalized = 1;
 
-            let binIdx;
-            if (displayBinIdx < fftSize / 2) {
-                binIdx = displayBinIdx - fftSize / 2;
-                if (binIdx < 0) binIdx += fftSize;
-            } else {
-                binIdx = displayBinIdx - fftSize / 2;
-            }
+            const lutIdx = (normalized * (lutSize - 1)) | 0;
+            const lutOffset = lutIdx * 3;
 
-            binIdx = Math.max(0, Math.min(binIdx, fftSize - 1));
-
-            const mag = spectrogram[clampedFrameIdx][binIdx];
-            const normalized = (mag - minMag) / (maxMag - minMag || 1);
-
-            const [r, g, b] = spectrogramColor(normalized);
-
-            const pixelIdx = (y * graphWidth + x) * 4;
-            data[pixelIdx] = r;
-            data[pixelIdx + 1] = g;
-            data[pixelIdx + 2] = b;
+            data[pixelIdx] = colorLut[lutOffset];
+            data[pixelIdx + 1] = colorLut[lutOffset + 1];
+            data[pixelIdx + 2] = colorLut[lutOffset + 2];
             data[pixelIdx + 3] = 255;
+            pixelIdx += 4;
         }
     }
 
