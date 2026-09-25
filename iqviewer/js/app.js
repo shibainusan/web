@@ -8,6 +8,8 @@ let marker2Time = null;
 let marker2Amplitude = null;
 let markerMode = null; // 'marker1' or 'marker2'
 let spectrogramHopSize = 512; // Default 50% overlap
+let currentFile = null;
+let currentFileHandle = null; // File System Access handle (lets reload see on-disk changes)
 
 function getSamplingRateMsps() {
     return parseFloat(elements.samplingRateSelector.value);
@@ -28,6 +30,7 @@ function msToSample(ms) {
 const elements = {
     fileInput: document.getElementById('fileInput'),
     fileLabel: document.querySelector('.file-label'),
+    reloadFileButton: document.getElementById('reloadFileButton'),
     iqFormatSelector: document.getElementById('iqFormatSelector'),
     fileName: document.getElementById('fileName'),
     fileSize: document.getElementById('fileSize'),
@@ -77,6 +80,8 @@ function init() {
 
 function setupEventListeners() {
     elements.fileInput.addEventListener('change', handleFileSelect);
+    elements.fileLabel.addEventListener('click', handleFileLabelClick);
+    elements.reloadFileButton.addEventListener('click', reloadFile);
 
     elements.fileLabel.addEventListener('dragover', handleDragOver);
     elements.fileLabel.addEventListener('dragleave', handleDragLeave);
@@ -113,7 +118,33 @@ function setupEventListeners() {
 function handleFileSelect(event) {
     const file = event.target.files[0];
     if (file) {
-        loadFile(file);
+        loadFile(file, null);
+    }
+}
+
+// Prefer the File System Access picker (Chromium) so reload can re-read the file from disk
+async function handleFileLabelClick(event) {
+    if (!window.showOpenFilePicker) return;
+    event.preventDefault();
+    try {
+        const [handle] = await window.showOpenFilePicker({
+            types: [{ description: 'IQ data', accept: { 'application/octet-stream': ['.bin'] } }]
+        });
+        loadFile(await handle.getFile(), handle);
+    } catch (error) {
+        if (error.name !== 'AbortError') {
+            setStatus(`Error: ${error.message}`);
+        }
+    }
+}
+
+async function reloadFile() {
+    if (!currentFile) return;
+    try {
+        const file = currentFileHandle ? await currentFileHandle.getFile() : currentFile;
+        await loadFile(file, currentFileHandle);
+    } catch (error) {
+        setStatus(`Reload failed (${error.message}) - please select the file again`);
     }
 }
 
@@ -133,11 +164,18 @@ function handleFileDrop(event) {
 
     const files = event.dataTransfer.files;
     if (files.length > 0) {
-        loadFile(files[0]);
+        const item = event.dataTransfer.items && event.dataTransfer.items[0];
+        const handlePromise = item && item.getAsFileSystemHandle ? item.getAsFileSystemHandle() : Promise.resolve(null);
+        handlePromise
+            .catch(() => null)
+            .then(handle => loadFile(files[0], handle && handle.kind === 'file' ? handle : null));
     }
 }
 
-async function loadFile(file) {
+async function loadFile(file, handle = null) {
+    currentFile = file;
+    currentFileHandle = handle;
+    elements.reloadFileButton.disabled = false;
     try {
         setStatus('Loading file...');
         showProgress();
