@@ -104,7 +104,7 @@ cma: __cma_alloc: reserved: alloc failed, req-size: 3907 pages, ret: -12
 cma: number of available pages: 187@69+189@4163+189@8259+4029@12355=> 4594 free of 16384 total pages
 ```
 
-とりあえずそれっぽい波形は取れたが若干怪しい。 [WiFi24G_100ms20Msps16bit.raw](./WiFi24G_100ms20Msps16bit.raw)
+とりあえずそれっぽい波形は取れたが若干怪しい。 [WiFi24G_100ms20Msps16bit.raw](./WiFi24G_100ms20Msps16bit.raw)  
 
 ![alt text](./2026-09-23_08_38_14.png)
 
@@ -112,10 +112,10 @@ cma: number of available pages: 187@69+189@4163+189@8259+4029@12355=> 4594 free 
 
 ADIのデータシートより https://www.analog.com/media/en/technical-documentation/data-sheets/ad9361.pdf
 
-2RX+2TX構成だが、LOはTX/RXでそれぞれ1個しかない。いわゆるFDD 2x2MIMO構成。
+2RX+2TX構成だが、LOはTX/RXでそれぞれ1個しかない。いわゆるFDD 2x2MIMO構成。  
 ![alt text](2026-09-23_10_33_40.png)
 
-なんだが、IIO Oscilloscopeに出てくる図のほうがわかりやすい。
+なんだが、IIO Oscilloscopeに出てくる図のほうがわかりやすい。  
 ![alt text](2026-09-23_19_14_19.png)
 
 ADIのUser Guideより https://www.analog.com/media/en/technical-documentation/user-guides/ad9361.pdf
