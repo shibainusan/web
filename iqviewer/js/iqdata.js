@@ -36,6 +36,9 @@ class IQData {
                 if (scale === 'adc16') {
                     iVal = iVal / 32768;
                     qVal = qVal / 32768;
+                } else if (scale === 'adc12') {
+                    iVal = iVal / 2048;
+                    qVal = qVal / 2048;
                 }
 
                 this.iValues[i] = iVal;
@@ -57,6 +60,10 @@ class IQData {
                     // ADC16 scale: normalize by dividing by 32768
                     iVal = iVal / 32768.0;
                     qVal = qVal / 32768.0;
+                } else if (scale === 'adc12') {
+                    // ADC12 scale: normalize by dividing by 2048
+                    iVal = iVal / 2048.0;
+                    qVal = qVal / 2048.0;
                 }
                 // If scale === 'absolute', keep raw int16 values as-is
 
@@ -188,7 +195,7 @@ class IQData {
         const averageDb = rms > 0 ? Math.log10(rms) * 20 : -Infinity;
         const peakDb = maxPower > 0 ? Math.log10(Math.sqrt(maxPower)) * 20 : -Infinity;
 
-        let bottomDb = this.currentScale === 'adc16' ? -96 : -130;
+        let bottomDb = this.currentScale === 'adc16' ? -96 : this.currentScale === 'adc12' ? -72 : -130;
 
         return {
             rms: rms,
