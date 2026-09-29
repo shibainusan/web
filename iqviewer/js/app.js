@@ -689,14 +689,13 @@ function drawSpectrogram(spectrogram, samplingRateHz, startSample = 0) {
     const fftSize = spectrogram[0].length;
     const startSampleMs = sampleToMs(startSample);
 
-    // Find min magnitude across all frames; max is fixed at 0 dBFS (full scale)
-    let minMag = 0;
+    // Color scale is fixed (not auto-scaled to this data's min/max), so the
+    // colorbar always means the same dBFS value regardless of the signal shown.
+    // Max is 0 dBFS (full scale); min follows the ADC bit depth noise floor.
     const maxMag = 0;
-    for (let frame = 0; frame < numFrames; frame++) {
-        for (let bin = 0; bin < fftSize; bin++) {
-            minMag = Math.min(minMag, spectrogram[frame][bin]);
-        }
-    }
+    const minMag = iqData.currentScale === 'adc16' ? -96
+        : iqData.currentScale === 'adc12' ? -72
+        : -130;
 
     // Draw spectrogram as heatmap
     const imageData = ctx.createImageData(graphWidth, graphHeight);
